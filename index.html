@@ -1,249 +1,329 @@
 <!DOCTYPE html>
-<html>
+<html lang="pt-BR">
   <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Lona Fort - Expedição</title>
     <script src="https://unpkg.com/html5-qrcode"></script>
     <style>
-      :root {
-        --primary-color: #1976d2; /* Azul para diferenciar das fracionadas */
-        --secondary-color: #f5f5f5;
-        --text-color: #333;
-        --border-radius: 12px;
+      :root { 
+        --primary: #0E6D64; 
+        --primary-dark: #0a4f48;
+        --bg: #f0f2f5; 
+        --text: #2d3748; 
+        --border-radius: 16px;
       }
+      
       body { 
-        font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; 
-        background-color: #e9ecef; margin: 0; display: flex;
-        justify-content: center; align-items: center; min-height: 100vh;
-        padding: 20px; box-sizing: border-box;
+        font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; 
+        background-color: var(--bg); 
+        margin: 0; 
+        padding: 0;
+        display: flex; 
+        justify-content: center; 
+        min-height: 100vh;
       }
-      .card {
-        background-color: white; padding: 25px; border-radius: var(--border-radius);
-        box-shadow: 0 8px 24px rgba(0,0,0,0.15); width: 100%; max-width: 450px;
-        box-sizing: border-box;
+      
+      .app-container { 
+        background: white; 
+        width: 100%; 
+        max-width: 480px; 
+        box-shadow: 0 10px 25px rgba(0,0,0,0.05);
+        display: flex;
+        flex-direction: column;
       }
-      h2 { color: var(--text-color); text-align: center; margin-top: 0; margin-bottom: 20px; font-weight: 600;}
-      #reader { width: 100%; border-radius: 8px; overflow: hidden; margin-bottom: 20px; border: 2px solid #ddd; }
-      #btn-iniciar-camera {
-        padding: 12px; background-color: #0E6D64; color: white; border: none;
-        border-radius: 8px; cursor: pointer; width: 100%; margin-bottom: 15px; font-weight: bold; font-size: 16px;
+
+      /* CABEÇALHO */
+      .header {
+        background-color: var(--primary);
+        color: white;
+        padding: 20px;
+        text-align: center;
+        font-size: 18px;
+        font-weight: 600;
+        letter-spacing: 0.5px;
+        box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        z-index: 10;
       }
-      label { font-weight: 500; font-size: 14px; color: var(--text-color); display: block; margin-top: 15px; margin-bottom: 5px; }
-      input[type="text"], input[type="number"], select, textarea {
-        width: 100%; padding: 12px; border: 1px solid #ccc; border-radius: 8px;
-        box-sizing: border-box; font-size: 16px; background-color: #fafafa;
+
+      .content { padding: 24px; flex: 1; }
+      
+      /* CÂMERA */
+      #reader { width: 100%; border-radius: 12px; overflow: hidden; border: none; box-shadow: 0 4px 12px rgba(0,0,0,0.1); background: #000; }
+      .camera-loading { text-align: center; color: #666; margin-top: 20px; font-weight: 500; }
+
+      /* PRODUTO EM DESTAQUE */
+      .produto-card {
+        background: #e6f4f1;
+        border-left: 5px solid var(--primary);
+        padding: 20px;
+        border-radius: 8px;
+        margin-bottom: 25px;
       }
-      textarea { resize: vertical; min-height: 80px; }
-      .row { display: flex; gap: 10px; } 
+      .produto-label { font-size: 12px; color: #555; text-transform: uppercase; font-weight: bold; letter-spacing: 1px; margin-bottom: 8px; }
+      .produto-nome { font-size: 22px; color: var(--primary-dark); font-weight: 800; margin: 0; word-break: break-word; }
+
+      /* FORMULÁRIO */
+      .form-group { margin-bottom: 20px; }
+      label { display: block; font-weight: 600; font-size: 14px; color: var(--text); margin-bottom: 8px; }
+      
+      input, select { 
+        width: 100%; 
+        padding: 14px; 
+        border: 1px solid #cbd5e0; 
+        border-radius: 10px; 
+        box-sizing: border-box; 
+        font-size: 16px; 
+        color: var(--text);
+        background-color: #f8fafc;
+        transition: border-color 0.2s, box-shadow 0.2s;
+      }
+      input:focus, select:focus { border-color: var(--primary); outline: none; box-shadow: 0 0 0 3px rgba(14, 109, 100, 0.15); background-color: #fff; }
+      
+      .row { display: flex; gap: 15px; margin-bottom: 20px; }
       .col { flex: 1; }
-      .caixa-troca { background-color: #fff8e1; border: 1px solid #ffe082; padding: 20px; border-radius: var(--border-radius); margin-top: 25px; }
-      .radio-group { display: flex; gap: 30px; margin-top: 10px; }
-      .radio-group label { margin-top: 0; font-weight: 500; display: flex; align-items: center; cursor: pointer;}
-      .radio-group input[type="radio"] { margin-right: 8px; transform: scale(1.2); }
-      button.btn-principal { 
-        padding: 16px; font-size: 18px; background-color: var(--primary-color); color: white; 
-        border: none; border-radius: 30px; width: 100%; cursor: pointer; margin-top: 30px; font-weight: bold; text-transform: uppercase;
+      
+      /* SEÇÃO DE SUBSTITUIÇÃO */
+      .troca-card { background: #fffaf0; border: 1px solid #feebc8; padding: 20px; border-radius: 12px; margin-top: 10px; }
+      .troca-header { display: flex; justify-content: space-between; align-items: center; }
+      .troca-header label { margin: 0; color: #dd6b20; font-size: 16px; }
+      
+      .toggle-switch { display: flex; gap: 15px; }
+      .toggle-switch label { display: flex; align-items: center; gap: 5px; font-weight: 500; margin: 0; cursor: pointer; color: #4a5568;}
+      .toggle-switch input { width: 18px; height: 18px; cursor: pointer; accent-color: #dd6b20; }
+
+      /* BOTÕES */
+      .btn-submit { 
+        background: var(--primary); color: white; border: none; padding: 18px; 
+        width: 100%; border-radius: 30px; font-size: 18px; font-weight: bold; 
+        cursor: pointer; margin-top: 30px; transition: background 0.2s; box-shadow: 0 4px 15px rgba(14, 109, 100, 0.3);
       }
-      button.btn-principal:disabled { background-color: #9e9e9e; cursor: not-allowed;}
-      #mensagem { text-align: center; font-weight: bold; margin-top: 20px; color: #2e7d32; font-size: 16px;}
+      .btn-submit:active { transform: translateY(2px); }
+      .btn-submit:disabled { background: #a0aec0; box-shadow: none; cursor: not-allowed; }
+      
+      .btn-voltar {
+        background: transparent; color: #718096; border: 1px solid #cbd5e0; padding: 12px;
+        width: 100%; border-radius: 10px; font-size: 14px; font-weight: 600; cursor: pointer;
+        margin-bottom: 20px; transition: 0.2s;
+      }
+      .btn-voltar:active { background: #edf2f7; }
+
+      #mensagem { text-align: center; font-weight: bold; margin-top: 15px; font-size: 15px; }
+      
+      /* CONTROLE DE TELAS */
+      .tela { display: none; }
+      .tela.ativa { display: block; animation: fadeIn 0.4s ease; }
+      @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
     </style>
   </head>
   <body>
-    <div class="card">
-      <h2>Saída - Bobinas Fechadas</h2>
-      
-      <button id="btn-iniciar-camera" onclick="iniciarCamera()">📷 Ler QR Code</button>
-      <div id="reader" style="display: none;"></div>
-      
-      <label>Código do Produto:</label>
-      <input type="text" id="codigo" placeholder="Ex: ECO01039 (Digite ou Escaneie)">
-      
-      <div class="row">
-        <div class="col">
-          <label>Tamanho:</label>
-          <input type="text" id="tamanho" placeholder="Ex: 12x22">
-        </div>
-        <div class="col">
-          <label>Quantidade:</label>
-          <input type="number" id="quantidade" value="1" min="1">
-        </div>
+    <div class="app-container">
+      <div class="header">
+        LONA FORT EXPEDIÇÃO
       </div>
+      
+      <div class="content">
+        <!-- TELA 1: CÂMERA AUTOMÁTICA -->
+        <div id="tela-camera" class="tela ativa">
+          <div id="reader"></div>
+          <div class="camera-loading" id="camera-status">Iniciando câmera inteligente...</div>
+        </div>
 
-      <label>Modalidade:</label>
-      <select id="modalidade">
-        <option value="" disabled selected>Selecione...</option>
-        <option value="LONAFORT">LONAFORT</option>
-        <option value="GEOMEMBRANA">GEOMEMBRANA</option>
-        <option value="GEOEXC">GEOEXC</option>
-        <option value="SHOPEE">SHOPEE</option>
-        <option value="MERCADO LIVRE">MERCADO LIVRE</option>
-        <option value="FRACIONADO">FRACIONADO</option>
-        <option value="OUTRO">OUTRO</option>
-      </select>
-      
-      <div class="row">
-        <div class="col">
-          <label>Pedido (Opcional):</label>
-          <input type="text" id="pedido" placeholder="Número">
-        </div>
-        <div class="col">
-          <label>NF (Opcional):</label>
-          <input type="text" id="nf" placeholder="Nota Fiscal">
-        </div>
-      </div>
-      
-      <label>O.C. (Opcional):</label>
-      <input type="text" id="oc" placeholder="Ordem de Compra">
-      
-      <div class="caixa-troca">
-        <label style="margin-top: 0; color: #f57f17; font-size: 16px;">Houve Substituição?</label>
-        <div class="radio-group">
-          <label><input type="radio" name="isTroca" value="sim" onchange="mostrarCamposTroca(true)"> Sim</label>
-          <label><input type="radio" name="isTroca" value="nao" onchange="mostrarCamposTroca(false)" checked> Não</label>
-        </div>
-        
-        <div id="camposExtrasTroca" style="display: none; margin-top: 20px;">
-          <label>Código Original (Substituído):</label>
-          <input type="text" id="codigoTroca" placeholder="Ex: ECO01024">
+        <!-- TELA 2: FORMULÁRIO LIMPO -->
+        <div id="tela-form" class="tela">
+          <button class="btn-voltar" onclick="reiniciarApp()">← Ler Outro Produto</button>
+
+          <div class="produto-card">
+            <div class="produto-label">Material Identificado</div>
+            <div class="produto-nome" id="produto-display">Aguardando...</div>
+          </div>
           
-          <label>Tipo de Metragem:</label>
-          <select id="tipoMetragem">
-            <option value="M²">M²</option>
-            <option value="LINEAR">LINEAR</option>
-          </select>
+          <input type="hidden" id="produto-codigo">
+
+          <div class="row">
+            <div class="col">
+              <label>Quantidade</label>
+              <input type="number" id="quantidade" value="1" min="1">
+            </div>
+            <div class="col">
+              <label>Modalidade</label>
+              <select id="modalidade">
+                <option value="" disabled selected>Selecione...</option>
+                <option value="MERCADO LIVRE">MERCADO LIVRE</option>
+                <option value="FLEX">FLEX</option>
+                <option value="SOLOPROTEC">SOLOPROTEC</option>
+                <option value="APD2">APD2</option>
+                <option value="LONAFORT">LONAFORT</option>
+                <option value="GEOMEMBRANA">GEOMEMBRANA</option>
+                <option value="SHOPEE">SHOPEE</option>
+                <option value="CORREIOS">CORREIOS</option>
+                <option value="FULL">FULL</option>
+                <option value="MAGALU">MAGALU</option>
+                <option value="RETIRA">RETIRA</option>
+                <option value="AJUSTE">AJUSTE</option>
+                <option value="GEOEXC">GEOEXC</option>
+                <option value="FLEX LON">FLEX LON</option>
+                <option value="OUTRO">OUTRO</option>
+              </select>
+            </div>
+          </div>
+
+          <div class="form-group">
+            <label>Pedido <span style="color:#e53e3e;">* (Mínimo 6 dígitos)</span></label>
+            <input type="number" id="pedido" placeholder="Digite os números do pedido">
+          </div>
+
+          <div class="row">
+            <div class="col">
+              <label>NF (Opcional)</label>
+              <input type="text" id="nf" placeholder="Número da Nota">
+            </div>
+            <div class="col">
+              <label>O.C. (Opcional)</label>
+              <input type="text" id="oc" placeholder="Ordem de Compra">
+            </div>
+          </div>
+
+          <div class="troca-card">
+            <div class="troca-header">
+              <label>Houve Substituição?</label>
+              <div class="toggle-switch">
+                <label><input type="radio" name="isTroca" value="sim" onchange="toggleTroca(true)"> Sim</label>
+                <label><input type="radio" name="isTroca" value="nao" onchange="toggleTroca(false)" checked> Não</label>
+              </div>
+            </div>
+            <div id="campos-troca" style="display:none; margin-top:20px; border-top: 1px dashed #f6ad55; padding-top: 15px;">
+              <label>Pedido Inicial</label>
+              <input type="text" id="pedido-inicial" placeholder="Qual era o pedido original?">
+            </div>
+          </div>
+
+          <button class="btn-submit" id="btn-enviar" onclick="enviarDados()">CONFIRMAR BAIXA</button>
+          <p id="mensagem"></p>
         </div>
       </div>
-
-      <label>Observação (Opcional):</label>
-      <textarea id="observacao" placeholder="Adicione detalhes..."></textarea>
-
-      <button class="btn-principal" id="btnConfirmar" onclick="confirmar()">Confirmar Baixa</button>
-      <p id="mensagem"></p>
     </div>
 
     <script>
-      // ==========================================================
-      // COLE AQUI O URL DO SEU GOOGLE APPS SCRIPT DAS BOBINAS!
-      // ==========================================================
-      const API_URL = "https://script.google.com/macros/s/AKfycby-Kjv_T7roddyoNEfFdXdCOcx2v23_487sx7ohKrlEjTrc3EkmXejEGNtUPQqlc1rcCA/exec";
+      // =======================================================
+      const API_URL = "SUA_URL_DO_APPS_SCRIPT_AQUI"; // COLE SEU LINK AQUI
+      // =======================================================
 
       let html5QrCode;
 
-      function tocarSom(tipo) {
+      // Inicia a câmera automaticamente ao abrir a página
+      window.onload = () => {
+        iniciarCamera();
+      };
+
+      function tocarBip() {
         try {
-          var audioCtx = new (window.AudioContext || window.webkitAudioContext)();
-          var oscillator = audioCtx.createOscillator();
-          var gainNode = audioCtx.createGain();
-          oscillator.connect(gainNode);
-          gainNode.connect(audioCtx.destination);
-          if (tipo === 'bip') {
-            oscillator.type = 'sine';
-            oscillator.frequency.setValueAtTime(1200, audioCtx.currentTime); 
-            gainNode.gain.setValueAtTime(1, audioCtx.currentTime);
-            gainNode.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.1);
-            oscillator.start(audioCtx.currentTime);
-            oscillator.stop(audioCtx.currentTime + 0.1);
-          }
-        } catch (e) { }
+          let ctx = new (window.AudioContext || window.webkitAudioContext)();
+          let osc = ctx.createOscillator();
+          let gain = ctx.createGain();
+          osc.connect(gain);
+          gain.connect(ctx.destination);
+          osc.type = 'sine';
+          osc.frequency.setValueAtTime(1200, ctx.currentTime); 
+          gain.gain.setValueAtTime(1, ctx.currentTime);
+          gain.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + 0.15);
+          osc.start(ctx.currentTime);
+          osc.stop(ctx.currentTime + 0.15);
+        } catch (e) {}
+        if(navigator.vibrate) navigator.vibrate(100);
       }
 
       function iniciarCamera() {
-        var btnCamera = document.getElementById('btn-iniciar-camera');
-        btnCamera.innerText = "Solicitando permissão...";
-        Html5Qrcode.getCameras().then(devices => {
-          if (devices && devices.length) {
-            btnCamera.style.display = 'none';
-            document.getElementById('reader').style.display = 'block';
-            html5QrCode = new Html5Qrcode("reader");
-            html5QrCode.start({ facingMode: "environment" }, { fps: 15, qrbox: { width: 250, height: 250 } }, onScanSuccess, onScanFailure)
-            .catch(() => {
-               html5QrCode.start(devices[devices.length - 1].id, { fps: 15, qrbox: { width: 250, height: 250 } }, onScanSuccess, onScanFailure);
-            });
-          } else { alert("Câmera não encontrada."); btnCamera.innerText = "📷 Ler QR Code"; }
-        }).catch(err => { alert("Permissão negada!"); btnCamera.innerText = "📷 Ler QR Code"; });
-      }
-
-      function onScanSuccess(decodedText) {
-        tocarSom('bip');
-        document.getElementById('codigo').value = decodedText; // Preenche o código lido
-        if (navigator.vibrate) { navigator.vibrate([100]); }
-        
-        html5QrCode.stop().then(() => {
-          document.getElementById('reader').style.display = 'none';
-          var btnCamera = document.getElementById('btn-iniciar-camera');
-          btnCamera.style.display = 'block'; btnCamera.innerText = "📷 Ler Outro Produto";
+        html5QrCode = new Html5Qrcode("reader");
+        html5QrCode.start(
+          { facingMode: "environment" }, 
+          { fps: 15, qrbox: { width: 250, height: 250 } }, 
+          onScanSuccess, 
+          (err) => {}
+        ).then(() => {
+          document.getElementById('camera-status').style.display = 'none';
+        }).catch(err => { 
+          document.getElementById('camera-status').innerHTML = "Câmera bloqueada. Verifique as permissões do navegador."; 
+          document.getElementById('camera-status').style.color = "#e53e3e";
         });
       }
 
-      function onScanFailure(error) { }
-
-      function mostrarCamposTroca(mostrar) {
-        document.getElementById('camposExtrasTroca').style.display = mostrar ? 'block' : 'none';
+      function onScanSuccess(texto) {
+        tocarBip();
+        html5QrCode.stop();
+        
+        // Transição de tela
+        document.getElementById('tela-camera').classList.remove('ativa');
+        document.getElementById('tela-form').classList.add('ativa');
+        
+        // Joga o texto em maiúsculo na tela
+        let lido = texto.trim().toUpperCase();
+        document.getElementById('produto-codigo').value = lido;
+        document.getElementById('produto-display').innerText = lido;
       }
 
-      function confirmar() {
-        var btn = document.getElementById('btnConfirmar');
-        var msg = document.getElementById('mensagem');
-        
-        var isTrocaSelecionado = document.querySelector('input[name="isTroca"]:checked').value;
+      function reiniciarApp() {
+        document.getElementById('tela-form').classList.remove('ativa');
+        document.getElementById('tela-camera').classList.add('ativa');
+        document.getElementById('camera-status').style.display = 'block';
+        document.getElementById('mensagem').innerText = '';
+        iniciarCamera();
+      }
 
-        var dados = {
-          codigo: document.getElementById('codigo').value.trim(),
-          tamanho: document.getElementById('tamanho').value.trim(),
-          quantidade: document.getElementById('quantidade').value || 1,
-          modalidade: document.getElementById('modalidade').value || "",
+      function toggleTroca(mostrar) {
+        document.getElementById('campos-troca').style.display = mostrar ? 'block' : 'none';
+      }
+
+      function enviarDados() {
+        let btn = document.getElementById('btn-enviar');
+        let msg = document.getElementById('mensagem');
+        
+        let payload = {
+          produto: document.getElementById('produto-codigo').value,
+          quantidade: document.getElementById('quantidade').value,
+          modalidade: document.getElementById('modalidade').value,
           pedido: document.getElementById('pedido').value.trim(),
           nf: document.getElementById('nf').value.trim(),
           oc: document.getElementById('oc').value.trim(),
-          isTroca: isTrocaSelecionado,
-          codigoTroca: isTrocaSelecionado === "sim" ? document.getElementById('codigoTroca').value.trim() : "",
-          tipoMetragem: isTrocaSelecionado === "sim" ? document.getElementById('tipoMetragem').value : "",
-          observacao: document.getElementById('observacao').value.trim()
+          isTroca: document.querySelector('input[name="isTroca"]:checked').value,
+          pedidoInicial: document.getElementById('pedido-inicial').value.trim()
         };
-        
-        if(!dados.codigo || !dados.tamanho || !dados.modalidade) {
-          alert("Por favor, preencha o Código, Tamanho e a Modalidade."); return;
+
+        // VALIDAÇÕES RIGOROSAS
+        if (!payload.modalidade) {
+          alert("Por favor, selecione uma Modalidade."); return;
+        }
+        if (!payload.pedido || payload.pedido.length < 6) {
+          alert("O campo Pedido é obrigatório e deve conter no mínimo 6 números."); 
+          document.getElementById('pedido').focus();
+          return;
         }
 
-        btn.disabled = true; btn.innerText = "Enviando..."; msg.innerText = "";
+        btn.disabled = true; 
+        btn.innerText = "Enviando dados..."; 
+        msg.innerText = "";
         
-        fetch(API_URL, {
-          method: 'POST',
-          body: JSON.stringify(dados)
-        })
-        .then(response => response.json())
-        .then(respostaJSON => {
-          if (respostaJSON.sucesso) {
-            tocarSom('bip');
-            if (navigator.vibrate) { navigator.vibrate([100, 50, 100]); }
-            msg.innerText = respostaJSON.mensagem; 
-            btn.innerText = "BAIXA FINALIZADA!"; 
-            btn.style.backgroundColor = "#2e7d32";
-            
-            setTimeout(function() {
-              document.getElementById('codigo').value = "";
-              document.getElementById('tamanho').value = "";
-              document.getElementById('quantidade').value = 1;
-              document.getElementById('pedido').value = "";
-              document.getElementById('nf').value = "";
-              document.getElementById('oc').value = "";
-              document.getElementById('observacao').value = "";
-              document.getElementById('modalidade').selectedIndex = 0; 
-              
-              btn.disabled = false; btn.innerText = "Confirmar Baixa"; btn.style.backgroundColor = "var(--primary-color)"; msg.innerText = "";
-              document.querySelector('input[name="isTroca"][value="nao"]').checked = true;
-              mostrarCamposTroca(false); 
-              document.getElementById('codigoTroca').value = "";
-            }, 3000); 
+        fetch(API_URL, { method: 'POST', body: JSON.stringify(payload) })
+        .then(res => res.json())
+        .then(res => {
+          if(res.sucesso) {
+            tocarBip(); 
+            msg.innerText = "✓ BAIXA FINALIZADA!"; 
+            msg.style.color = "#2e7d32";
+            btn.style.background = "#2e7d32";
+            btn.innerText = "SUCESSO";
+            setTimeout(() => { location.reload(); }, 2000);
           } else {
-             msg.innerText = "Erro: " + respostaJSON.erro; msg.style.color = "#d32f2f";
-             btn.disabled = false; btn.innerText = "Tentar Novamente";
+            msg.innerText = "Erro: " + res.erro; 
+            msg.style.color = "#e53e3e"; 
+            btn.disabled = false; 
+            btn.innerText = "Tentar Novamente";
           }
-        })
-        .catch(erro => {
-          console.error("Erro no fetch:", erro);
-          msg.innerText = "Erro de conexão ao salvar. Tente de novo."; msg.style.color = "#d32f2f";
-          btn.disabled = false; btn.innerText = "Tentar Novamente";
+        }).catch(err => { 
+          msg.innerText = "Erro de conexão (Sem internet)."; 
+          msg.style.color = "#e53e3e"; 
+          btn.disabled = false; 
+          btn.innerText = "Tentar Novamente"; 
         });
       }
     </script>
