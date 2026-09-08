@@ -117,7 +117,7 @@
 
     <script>
       // =========================================================================
-      // COLOQUE AQUI A URL DO SEU GOOGLE APPS SCRIPT (O LINK DA NOVA IMPLANTAÇÃO)
+      // URL DO GOOGLE APPS SCRIPT (O LINK DA NOVA IMPLANTAÇÃO)
       // =========================================================================
       const URL_API_GOOGLE = "https://script.google.com/macros/s/AKfycbzp4spSLWEJvkdf3GqPZ9prwtzuz_HmrZ70gRbpoGbpB2-P2Sjtc1Nfrb63YWsekCO3ww/exec"; 
 
@@ -236,9 +236,8 @@
         function gerarHtmlCartao(i) {
            let cardClasse = i.e ? "erro-card" : bgClasse; 
            return `<div id="${i.id}" class="item-bip ${cardClasse}">
-             <div class="txt-principal">L.ped ${i.lp} | ${i.ped}</div>
-             <div class="txt-mod">${i.mod}</div>
-             ${i.s !== "✅ OK" || i.e ? `<div class="status-badge">${i.s}</div>` : ""}
+             <div class="txt-principal">L.ped ${i.lp} \vert{}${i.ped}</div>
+             <div class="txt-mod">${i.mod}</div>${i.s !== "✅ OK" || i.e ? `<div class="status-badge">${i.s}</div>` : ""}
            </div>`;
         }
 
