@@ -3,183 +3,164 @@
   <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
-    <title>LonaFort Mobile</title>
+    <title>LonaFort WMS</title>
+    <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://unpkg.com/html5-qrcode"></script>
+    <script src="https://unpkg.com/@phosphor-icons/web"></script>
     <style>
-      @keyframes slideDown { from { opacity: 0; transform: translateY(-10px); } to { opacity: 1; transform: translateY(0); } }
-      @keyframes shake { 0%, 100% {transform: translateX(0);} 25% {transform: translateX(-5px);} 75% {transform: translateX(5px);} }
-
-      * { box-sizing: border-box; }
-      body { font-family: sans-serif; background-color: #F8FAFC; margin: 0; padding: 0; height: 100vh; display: flex; flex-direction: column; overflow: hidden; }
-      
-      .app-header { display: flex; flex-direction: column; align-items: center; padding: 15px; background: white; box-shadow: 0 2px 10px rgba(0,0,0,0.05); z-index: 60;}
-      .app-logo { height: 35px; margin-bottom: 5px; object-fit: contain; }
-      .app-title { font-size: 22px; font-weight: 900; margin: 0; text-transform: uppercase; letter-spacing: 1px;}
-      
-      .theme-corte { color: #475569; } 
-      .theme-embalagem { color: #3b82f6; } 
-      .theme-entrega { color: #10b981; } 
-      .bg-corte { background-color: #475569 !important; color: white !important; }
-      .bg-embalagem { background-color: #3b82f6 !important; color: white !important; }
-      .bg-entrega { background-color: #10b981 !important; color: white !important; }
-
-      .top-nav { background: white; padding: 10px 15px; display: flex; gap: 10px; z-index: 50; border-bottom: 1px solid #eee;}
-      .tab-btn { flex: 1; padding: 12px; font-weight: bold; border-radius: 8px; border: none; background: #f1f5f9; color: #64748b; font-size: 15px; transition: 0.3s; cursor: pointer;}
-      .tab-btn.active { background: #0f172a; color: white; }
-
-      #main-wrapper { position: relative; flex: 1; width: 100%; overflow: hidden; }
-      .view-panel { position: absolute; top: 0; width: 100%; height: 100%; overflow-y: auto; padding: 15px; transition: left 0.3s ease-in-out; padding-bottom: 30px;}
-      #painel-camera { left: 0; }
-      #painel-lista { left: 100%; }
-
-      .card-controles { background: white; padding: 15px; border-radius: 12px; margin-bottom: 15px; box-shadow: 0 2px 8px rgba(0,0,0,0.05); }
-      #operador { width: 100%; padding: 12px; border: 2px solid #e2e8f0; border-radius: 8px; font-size: 16px; text-align: center; font-weight: bold;}
-      #operador:focus { border-color: #0f172a; outline: none; }
-
-      #reader { width: 100%; border-radius: 12px; overflow: hidden; display: none; background: #000; margin-bottom: 10px; box-shadow: 0 4px 15px rgba(0,0,0,0.1);}
-
-      #fallback { display: flex; gap: 10px; background: white; padding: 12px; border-radius: 10px; box-shadow: 0 2px 8px rgba(0,0,0,0.05); margin-top: auto; z-index: 99;}
-      #cod-man { flex: 2; padding: 12px; border: 1px solid #ccc; border-radius: 6px; font-size: 16px; text-align: center; }
-      #btn-man { flex: 1; border: none; border-radius: 6px; font-weight: bold; font-size: 16px; cursor: pointer;}
-
-      #stats-container { background: white; padding: 15px; border-radius: 12px; box-shadow: 0 2px 8px rgba(0,0,0,0.05); margin-bottom: 15px; }
-      #stats-header { display: flex; justify-content: space-between; font-size: 16px; font-weight: bold; cursor: pointer; }
-      #stats-drawer { display: none; margin-top: 12px; padding-top: 12px; border-top: 1px solid #eee; font-size: 14px; }
-      
-      .dash-geral { display: flex; justify-content: space-between; margin-bottom: 10px; }
-      .dash-item { display: flex; flex-direction: column; align-items: center; background: #f8fafc; padding: 8px 5px; border-radius: 8px; border: 1px solid #e2e8f0; width: 31%; font-size: 12px; color: #64748b; font-weight: bold; }
-      .dash-item b { font-size: 18px; margin-top: 3px; color: #0f172a;}
-      .mod-item { display: flex; justify-content: space-between; padding: 6px 0; border-bottom: 1px solid #f0f0f0; }
-
-      #historico-lista { display: flex; flex-direction: column; gap: 10px; }
-      .item-bip { border-radius: 10px; padding: 15px; display: flex; flex-direction: column; align-items: center; border: 1px solid #ddd; animation: slideDown 0.3s ease; box-shadow: 0 2px 5px rgba(0,0,0,0.1);}
-      
-      .erro-card { background-color: #f59e0b !important; color: white !important; font-weight: bold; border: none; animation: shake 0.4s; }
-
-      .txt-principal { font-size: 18px; font-weight: bold; text-align: center; }
-      .txt-mod { font-size: 12px; background: rgba(0,0,0,0.2); padding: 4px 10px; border-radius: 6px; margin-top: 6px; font-weight: bold; text-transform: uppercase; }
-      .status-badge { font-size: 12px; margin-top: 5px; font-weight: bold; background: white; color: black; padding: 2px 8px; border-radius: 4px; }
-      #ultimo-bip-container { margin-top: 15px; }
+      @keyframes slideIn { from { opacity: 0; transform: translateY(-10px); } to { opacity: 1; transform: translateY(0); } }
+      .animate-slide-in { animation: slideIn 0.3s cubic-bezier(0.4, 0, 0.2, 1); }
+      body { -webkit-tap-highlight-color: transparent; }
+      #reader video { object-fit: cover !important; border-radius: 0.75rem; }
     </style>
   </head>
-  <body>
+  <body class="bg-slate-50 text-slate-800 h-screen flex flex-col overflow-hidden font-sans selection:bg-teal-200">
     
-    <div class="app-header">
-      <img src="https://drive.google.com/thumbnail?id=1rBz6z660wObQcNU0E--LmhoKw2redIRX&sz=w800" alt="LonaFort" class="app-logo">
-      <h1 class="app-title" id="titulo-app">CARREGANDO...</h1>
-    </div>
-
-    <div class="top-nav">
-      <button class="tab-btn active" id="tab0" onclick="irParaAba(0)">📷 CÂMERA</button>
-      <button class="tab-btn" id="tab1" onclick="irParaAba(1)">📋 LISTA (<span id="cont-lista">0</span>)</button>
-    </div>
-
-    <div id="main-wrapper">
-      <div id="painel-camera" class="view-panel">
-        <div class="card-controles">
-          <input type="text" id="operador" placeholder="Digite seu Nome para iniciar">
-        </div>
-
-        <div id="reader"></div>
-
-        <div id="fallback">
-          <input type="text" id="cod-man" inputmode="numeric" placeholder="Cód Manual">
-          <button id="btn-man" onclick="enviarManual()">Ok</button>
-        </div>
-
-        <div id="ultimo-bip-container">
-          <div style="color:#94a3b8;text-align:center;margin-top:10px;font-weight:bold;">Última leitura aparecerá aqui</div>
-        </div>
+    <!-- CABEÇALHO -->
+    <header class="bg-white px-4 py-3 shadow-sm z-50 flex items-center justify-between border-b border-slate-100 flex-shrink-0">
+      <img src="https://drive.google.com/thumbnail?id=1rBz6z660wObQcNU0E--LmhoKw2redIRX&sz=w800" alt="LonaFort" class="h-8 object-contain">
+      <div class="flex items-center gap-2">
+        <i id="icone-setor" class="ph-fill text-xl"></i>
+        <h1 class="text-lg font-black tracking-wide uppercase" id="titulo-app">...</h1>
       </div>
+    </header>
 
-      <div id="painel-lista" class="view-panel">
-        <div id="stats-container">
-          <div id="stats-header" onclick="toggleGaveta()">
-            <span id="titulo-stats">PROCESSADOS: <span id="total-val">0</span></span>
-            <span>▼ Geral</span>
-          </div>
-          <div id="stats-drawer">
-            <div class="dash-geral">
-               <div class="dash-item">Corte<b id="tot-corte">0</b></div>
-               <div class="dash-item">Embal<b id="tot-emb">0</b></div>
-               <div class="dash-item">Exped<b id="tot-ent">0</b></div>
+    <!-- NAVEGAÇÃO -->
+    <div class="bg-white p-3 shadow-sm z-40 flex-shrink-0">
+      <div class="flex bg-slate-100 rounded-xl p-1 gap-1">
+        <button id="tab0" onclick="irParaAba(0)" class="flex-1 py-2 text-sm font-bold rounded-lg transition-all text-slate-400 bg-transparent flex items-center justify-center gap-2"><i class="ph-bold ph-scan"></i> Câmera</button>
+        <button id="tab1" onclick="irParaAba(1)" class="flex-1 py-2 text-sm font-bold rounded-lg transition-all text-slate-400 bg-transparent flex items-center justify-center gap-2"><i class="ph-bold ph-list-checks"></i> Fila (<span id="cont-lista">0</span>)</button>
+      </div>
+    </div>
+
+    <!-- ÁREA PRINCIPAL -->
+    <main class="relative flex-1 w-full overflow-hidden">
+      
+      <!-- ABA 0: CÂMERA -->
+      <section id="painel-camera" class="absolute inset-0 w-full h-full overflow-y-auto p-4 transition-transform duration-300 transform translate-x-0 flex flex-col">
+        
+        <div class="bg-white p-1 rounded-xl shadow-sm border border-slate-200 mb-4 flex items-center px-3">
+          <i class="ph-bold ph-user text-slate-400 text-lg mr-2"></i>
+          <input type="text" id="operador" placeholder="Seu nome para iniciar..." class="w-full py-3 bg-transparent text-slate-700 font-bold placeholder-slate-400 outline-none">
+        </div>
+
+        <div id="box-leitor" class="bg-slate-900 rounded-2xl shadow-inner mb-4 overflow-hidden relative border-4 border-slate-800 transition-colors">
+          <div id="reader" class="w-full bg-black min-h-[250px] flex items-center justify-center text-slate-500 font-medium text-sm">Aguardando operador...</div>
+        </div>
+
+        <div class="flex gap-2 mb-4 flex-shrink-0">
+          <input type="text" id="cod-man" inputmode="numeric" placeholder="Digitar Cód..." class="flex-1 bg-white border border-slate-200 rounded-xl px-4 py-3 text-center font-bold text-slate-700 shadow-sm outline-none focus:border-slate-400">
+          <button id="btn-man" onclick="enviarManual()" class="px-6 rounded-xl font-black text-white shadow-sm transition-transform active:scale-95 flex items-center justify-center"><i class="ph-bold ph-arrow-right text-xl"></i></button>
+        </div>
+
+        <div id="ultimo-bip-container" class="mt-auto flex-shrink-0">
+          <div class="text-center text-slate-400 text-sm font-medium py-4 flex flex-col items-center gap-1"><i class="ph-bold ph-barcode text-3xl opacity-50"></i> Posição da última leitura</div>
+        </div>
+      </section>
+
+      <!-- ABA 1: LISTA / DASHBOARD -->
+      <section id="painel-lista" class="absolute inset-0 w-full h-full overflow-y-auto p-4 transition-transform duration-300 transform translate-x-full">
+        
+        <div class="bg-white rounded-2xl shadow-sm border border-slate-200 p-4 mb-4">
+          <div onclick="toggleGaveta()" class="flex justify-between items-center cursor-pointer">
+            <div>
+              <p class="text-[10px] uppercase font-bold text-slate-400">Total Processado</p>
+              <p class="text-2xl font-black text-slate-800 leading-none mt-1" id="total-val">0</p>
             </div>
-            <div style="font-size:12px; color:#94a3b8; margin-top:10px; margin-bottom:5px; text-transform:uppercase; font-weight:bold;">Detalhes:</div>
-            <div id="lista-mods"></div>
+            <div class="bg-slate-50 p-2 rounded-lg text-slate-400 hover:text-slate-600 transition-colors"><i class="ph-bold ph-caret-down"></i></div>
+          </div>
+          
+          <div id="stats-drawer" class="hidden mt-4 pt-4 border-t border-slate-100">
+            <div class="grid grid-cols-3 gap-2 mb-4">
+               <div class="bg-slate-50 p-2 rounded-xl text-center border border-slate-100"><p class="text-[10px] font-bold text-slate-400 uppercase">Corte</p><p class="text-lg font-black text-slate-700" id="tot-corte">0</p></div>
+               <div class="bg-slate-50 p-2 rounded-xl text-center border border-slate-100"><p class="text-[10px] font-bold text-slate-400 uppercase">Embal</p><p class="text-lg font-black text-slate-700" id="tot-emb">0</p></div>
+               <div class="bg-slate-50 p-2 rounded-xl text-center border border-slate-100"><p class="text-[10px] font-bold text-slate-400 uppercase">Exped</p><p class="text-lg font-black text-slate-700" id="tot-ent">0</p></div>
+            </div>
+            <p class="text-[10px] font-bold text-slate-400 uppercase mb-2">Por Modalidade:</p>
+            <div id="lista-mods" class="text-sm"></div>
           </div>
         </div>
 
-        <div id="historico-lista">
-          <div style="color:#94a3b8;text-align:center;margin-top:20px;font-weight:bold;">Nenhum item na memória ainda.</div>
+        <div id="historico-lista" class="flex flex-col gap-3 pb-6">
+          <div class="text-center text-slate-400 text-sm font-medium py-10 flex flex-col items-center gap-2"><i class="ph-bold ph-ghost text-4xl opacity-50"></i> Memória vazia</div>
         </div>
-      </div>
-    </div>
+      </section>
+
+    </main>
 
     <script>
       // =========================================================================
-      // URL DO GOOGLE APPS SCRIPT (O LINK DA NOVA IMPLANTAÇÃO)
+      // COLOQUE AQUI A URL DO SEU GOOGLE APPS SCRIPT (O LINK DA NOVA IMPLANTAÇÃO)
       // =========================================================================
       const URL_API_GOOGLE = "https://script.google.com/macros/s/AKfycbzp4spSLWEJvkdf3GqPZ9prwtzuz_HmrZ70gRbpoGbpB2-P2Sjtc1Nfrb63YWsekCO3ww/exec"; 
 
-      // Puxa o setor direto da URL (ex: meugithub.io/lona?setor=corte)
       const urlParams = new URLSearchParams(window.location.search);
       const setorApp = (urlParams.get('setor') || 'CORTE').toUpperCase();
       
-      let temaClasse = 'theme-corte';
-      let bgClasse = 'bg-corte';
-      
-      if(setorApp === 'EMBALAGEM') { temaClasse = 'theme-embalagem'; bgClasse = 'bg-embalagem'; }
-      if(setorApp === 'ENTREGA') { temaClasse = 'theme-entrega'; bgClasse = 'bg-entrega'; }
+      const config = {
+        'CORTE': { color: 'text-slate-700', bg: 'bg-slate-700', border: 'border-slate-700', icon: 'ph-scissors' },
+        'EMBALAGEM': { color: 'text-blue-600', bg: 'bg-blue-600', border: 'border-blue-600', icon: 'ph-package' },
+        'ENTREGA': { color: 'text-emerald-600', bg: 'bg-emerald-600', border: 'border-emerald-600', icon: 'ph-truck' }
+      };
+
+      const tema = config[setorApp] || config['CORTE'];
 
       var totaisGerais = {"CORTE":0, "EMBALAGEM":0, "ENTREGA":0}, mods = {}, fila = [], proc = false, scanner = null;
       var abaAtual = 0, codUltimoScan = "", timeUltimoScan = 0;
       
       var inputOp = document.getElementById('operador');
       inputOp.value = localStorage.getItem('opLona') || '';
-      inputOp.onchange = () => { localStorage.setItem('opLona', inputOp.value); iniciarSistema(); };
-
+      inputOp.addEventListener('blur', () => { 
+        if(inputOp.value.trim() !== '') {
+          localStorage.setItem('opLona', inputOp.value); 
+          iniciarSistema(); 
+        }
+      });
       document.getElementById('cod-man').addEventListener("keyup", function(e) { if (e.key === "Enter") enviarManual(); });
 
       window.onload = function() {
         document.getElementById('titulo-app').innerText = setorApp;
-        document.getElementById('titulo-app').classList.add(temaClasse);
-        document.getElementById('btn-man').classList.add(bgClasse);
-        document.getElementById('titulo-stats').classList.add(temaClasse);
-        document.getElementById('reader').style.border = `4px solid ${setorApp === 'EMBALAGEM' ? '#3b82f6' : (setorApp === 'ENTREGA' ? '#10b981' : '#475569')}`;
+        document.getElementById('titulo-app').classList.add(tema.color);
+        document.getElementById('icone-setor').classList.add(tema.color, tema.icon);
+        document.getElementById('btn-man').classList.add(tema.bg);
+        document.getElementById('box-leitor').classList.replace('border-slate-800', tema.border);
         
+        atualizarAbaVisual(0);
         if(inputOp.value !== "") iniciarSistema();
       };
 
       function iniciarSistema() {
         buscarResumoServidor();
-        if(!scanner) { setTimeout(ligar, 300); }
+        if(!scanner) setTimeout(ligar, 500);
       }
 
-      // NOVO: CONEXÃO COM O GOOGLE USANDO FETCH
       async function buscarResumoServidor() {
         try {
-          const requisicao = await fetch(URL_API_GOOGLE, {
-            method: 'POST',
-            body: JSON.stringify({ acao: "buscarResumo", etapa: setorApp })
-          });
-          const res = await requisicao.json();
-          totaisGerais = res.totais; 
-          mods = res.mods; 
-          atualizarGaveta(); 
-        } catch (e) {
-          console.error("Erro ao buscar resumo:", e);
-        }
+          const req = await fetch(URL_API_GOOGLE, { method: 'POST', body: JSON.stringify({ acao: "buscarResumo", etapa: setorApp }) });
+          const res = await req.json();
+          totaisGerais = res.totais; mods = res.mods; atualizarGaveta(); 
+        } catch (e) {}
       }
 
       function irParaAba(index) {
         abaAtual = index;
-        document.getElementById('tab0').className = index === 0 ? "tab-btn active" : "tab-btn";
-        document.getElementById('tab1').className = index === 1 ? "tab-btn active" : "tab-btn";
-        document.getElementById('painel-camera').style.left = index === 0 ? "0" : "-100%";
-        document.getElementById('painel-lista').style.left = index === 0 ? "100%" : "0";
+        atualizarAbaVisual(index);
+        document.getElementById('painel-camera').style.transform = index === 0 ? "translateX(0)" : "translateX(-100%)";
+        document.getElementById('painel-lista').style.transform = index === 0 ? "translateX(100%)" : "translateX(0)";
       }
 
-      function toggleGaveta() { let d = document.getElementById('stats-drawer'); d.style.display = (d.style.display==='block')?'none':'block'; }
+      function atualizarAbaVisual(index) {
+        const btn0 = document.getElementById('tab0');
+        const btn1 = document.getElementById('tab1');
+        
+        btn0.className = index === 0 ? `flex-1 py-2 text-sm font-bold rounded-lg shadow-sm transition-all text-white flex items-center justify-center gap-2 ${tema.bg}` : `flex-1 py-2 text-sm font-bold rounded-lg transition-all text-slate-500 bg-transparent flex items-center justify-center gap-2`;
+        btn1.className = index === 1 ? `flex-1 py-2 text-sm font-bold rounded-lg shadow-sm transition-all text-white flex items-center justify-center gap-2 ${tema.bg}` : `flex-1 py-2 text-sm font-bold rounded-lg transition-all text-slate-500 bg-transparent flex items-center justify-center gap-2`;
+      }
+
+      function toggleGaveta() { 
+        const d = document.getElementById('stats-drawer'); 
+        d.classList.toggle('hidden'); 
+      }
 
       function atualizarGaveta() {
         document.getElementById('total-val').innerText = totaisGerais[setorApp] || 0;
@@ -187,31 +168,26 @@
         document.getElementById('tot-emb').innerText = totaisGerais["EMBALAGEM"] || 0;
         document.getElementById('tot-ent').innerText = totaisGerais["ENTREGA"] || 0;
         let h = ""; 
-        for(let k in mods) h += `<div class='mod-item'><span>${k}</span><b>${mods[k]}</b></div>`;
-        document.getElementById('lista-mods').innerHTML = h || "<div style='text-align:center; color:#94a3b8;'>Nenhum pedido hoje.</div>";
+        for(let k in mods) h += `<div class='flex justify-between py-2 border-b border-slate-50 last:border-0'><span class="font-medium text-slate-600">${k}</span><b class="text-slate-800">${mods[k]}</b></div>`;
+        document.getElementById('lista-mods').innerHTML = h || "<div class='text-center text-slate-400 py-2'>Nenhum pedido hoje.</div>";
       }
 
       function ligar() {
         try {
           if (!scanner) { scanner = new Html5Qrcode("reader"); }
-          document.getElementById('reader').style.display = 'block';
-          scanner.start(
-            { facingMode: "environment" }, 
-            { fps: 15, qrbox: 200 }, 
-            function(c) { adicionarAFila(c); }
-          ).catch(function(err) { console.error("Erro de câmera:", err); });
+          document.getElementById('reader').innerHTML = ''; // Limpa mensagem de espera
+          scanner.start({ facingMode: "environment" }, { fps: 15, qrbox: 250 }, function(c) { adicionarAFila(c); }).catch(function(err) {});
         } catch(err) {}
       }
 
       function enviarManual() { 
-        if(inputOp.value === "") { alert("Digite seu nome!"); return; }
+        if(inputOp.value === "") { alert("Digite seu nome!"); inputOp.focus(); return; }
         let v = document.getElementById('cod-man').value; 
         if(v) { adicionarAFila(v); document.getElementById('cod-man').value=""; } 
       }
 
       function adicionarAFila(codigo) {
-        if(inputOp.value === "") { alert("Digite seu nome primeiro!"); return; }
-        
+        if(inputOp.value === "") { alert("Digite seu nome primeiro!"); inputOp.focus(); return; }
         let agora = Date.now();
         let codString = String(codigo).trim();
 
@@ -222,7 +198,7 @@
         let codLimpo = codString.replace("Ped:", "").split('|')[0].trim();
         let codCurto = codLimpo.length > 4 ? codLimpo.slice(-4) : codLimpo;
         
-        let item = { id: Date.now(), c: codString, s: "⏳ GRAVANDO...", lp: "?", ped: codCurto, mod: "...", e: false };
+        let item = { id: Date.now(), c: codString, s: "GRAVANDO...", lp: "?", ped: codCurto, mod: "...", status: 'load' };
         fila.push(item); 
 
         renderTelas();
@@ -234,10 +210,33 @@
         if(fila.length === 0) return;
 
         function gerarHtmlCartao(i) {
-           let cardClasse = i.e ? "erro-card" : bgClasse; 
-           return `<div id="${i.id}" class="item-bip ${cardClasse}">
-             <div class="txt-principal">L.ped ${i.lp} \vert{}${i.ped}</div>
-             <div class="txt-mod">${i.mod}</div>${i.s !== "✅ OK" || i.e ? `<div class="status-badge">${i.s}</div>` : ""}
+           let cardStyle = "bg-white border-slate-200 text-slate-800";
+           let icon = `<i class="ph-bold ph-spinner animate-spin text-slate-400 text-xl"></i>`;
+           let modStyle = "bg-slate-100 text-slate-500";
+           
+           if(i.status === 'ok') {
+             cardStyle = `${tema.bg} border-transparent text-white shadow-md`;
+             icon = `<i class="ph-fill ph-check-circle text-white text-2xl"></i>`;
+             modStyle = "bg-black/20 text-white";
+           } else if(i.status === 'erro') {
+             cardStyle = "bg-amber-500 border-transparent text-white shadow-md animate-shake";
+             icon = `<i class="ph-fill ph-warning-circle text-white text-2xl"></i>`;
+             modStyle = "bg-black/20 text-white";
+           }
+
+           return `
+           <div id="${i.id}" class="animate-slide-in p-4 rounded-2xl border flex items-center justify-between gap-4 transition-all duration-300 ${cardStyle}">
+             <div class="flex-1 overflow-hidden">
+               <div class="flex items-center gap-2 mb-1">
+                 <h3 class="font-black text-lg truncate">L.${i.lp}</h3>
+                 <span class="text-xs font-mono opacity-75">#${i.ped}</span>
+               </div>
+               <div class="flex items-center gap-2">
+                 <span class="text-[10px] font-bold uppercase px-2 py-0.5 rounded-md ${modStyle} truncate max-w-full">${i.mod}</span>
+               </div>
+               ${i.status !== 'ok' ? `<p class="text-xs font-bold mt-2 opacity-90">${i.s}</p>` : ''}
+             </div>
+             <div class="flex-shrink-0">${icon}</div>
            </div>`;
         }
 
@@ -246,39 +245,29 @@
         document.getElementById('historico-lista').innerHTML = h;
       }
 
-      // NOVO: ENVIO DE DADOS PARA O GOOGLE USANDO FETCH
       async function processar() {
-        let i = fila.find(x => x.s === "⏳ GRAVANDO...");
+        let i = fila.find(x => x.status === 'load');
         if(!i) { proc = false; return; }
         proc = true;
         
         try {
-          const requisicao = await fetch(URL_API_GOOGLE, {
-            method: 'POST',
-            body: JSON.stringify({ 
-              acao: "processarLogistica", 
-              codigo: i.c, 
-              operador: inputOp.value, 
-              etapa: setorApp 
-            })
-          });
-          
-          const r = await requisicao.json();
+          const req = await fetch(URL_API_GOOGLE, { method: 'POST', body: JSON.stringify({ acao: "processarLogistica", codigo: i.c, operador: inputOp.value, etapa: setorApp }) });
+          const r = await req.json();
           let idx = fila.findIndex(x => x.id === i.id);
           
           if(r.sucesso) {
             bip(1500, 0.3); 
-            fila[idx].s = "✅ OK"; fila[idx].lp = r.lped; fila[idx].ped = r.cod; fila[idx].mod = r.mod;
+            fila[idx].status = 'ok'; fila[idx].s = "OK"; fila[idx].lp = r.lped; fila[idx].ped = r.cod; fila[idx].mod = r.mod;
             totaisGerais[setorApp]++;
             let nomeMod = r.mod.replace(" (Pronto)", ""); 
             mods[nomeMod] = (mods[nomeMod] || 0) + 1; 
             atualizarGaveta();
           } else { 
-            bip(200, 0.5); fila[idx].s = r.erro; fila[idx].e = true; 
+            bip(200, 0.5); fila[idx].status = 'erro'; fila[idx].s = r.erro; 
           }
         } catch (err) {
           let idx = fila.findIndex(x => x.id === i.id);
-          bip(200, 0.5); fila[idx].s = "❌ Erro. Tente dnv."; fila[idx].e = true;
+          bip(200, 0.5); fila[idx].status = 'erro'; fila[idx].s = "Falha de conexão.";
         }
 
         renderTelas(); 
