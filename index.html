@@ -2,329 +2,301 @@
 <html lang="pt-BR">
   <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Lona Fort - Expedição</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
+    <title>LonaFort Mobile</title>
     <script src="https://unpkg.com/html5-qrcode"></script>
     <style>
-      :root { 
-        --primary: #0E6D64; 
-        --primary-dark: #0a4f48;
-        --bg: #f0f2f5; 
-        --text: #2d3748; 
-        --border-radius: 16px;
-      }
-      
-      body { 
-        font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; 
-        background-color: var(--bg); 
-        margin: 0; 
-        padding: 0;
-        display: flex; 
-        justify-content: center; 
-        min-height: 100vh;
-      }
-      
-      .app-container { 
-        background: white; 
-        width: 100%; 
-        max-width: 480px; 
-        box-shadow: 0 10px 25px rgba(0,0,0,0.05);
-        display: flex;
-        flex-direction: column;
-      }
+      @keyframes slideDown { from { opacity: 0; transform: translateY(-10px); } to { opacity: 1; transform: translateY(0); } }
+      @keyframes shake { 0%, 100% {transform: translateX(0);} 25% {transform: translateX(-5px);} 75% {transform: translateX(5px);} }
 
-      /* CABEÇALHO */
-      .header {
-        background-color: var(--primary);
-        color: white;
-        padding: 20px;
-        text-align: center;
-        font-size: 18px;
-        font-weight: 600;
-        letter-spacing: 0.5px;
-        box-shadow: 0 2px 10px rgba(0,0,0,0.1);
-        z-index: 10;
-      }
+      * { box-sizing: border-box; }
+      body { font-family: sans-serif; background-color: #F8FAFC; margin: 0; padding: 0; height: 100vh; display: flex; flex-direction: column; overflow: hidden; }
+      
+      .app-header { display: flex; flex-direction: column; align-items: center; padding: 15px; background: white; box-shadow: 0 2px 10px rgba(0,0,0,0.05); z-index: 60;}
+      .app-logo { height: 35px; margin-bottom: 5px; object-fit: contain; }
+      .app-title { font-size: 22px; font-weight: 900; margin: 0; text-transform: uppercase; letter-spacing: 1px;}
+      
+      .theme-corte { color: #475569; } 
+      .theme-embalagem { color: #3b82f6; } 
+      .theme-entrega { color: #10b981; } 
+      .bg-corte { background-color: #475569 !important; color: white !important; }
+      .bg-embalagem { background-color: #3b82f6 !important; color: white !important; }
+      .bg-entrega { background-color: #10b981 !important; color: white !important; }
 
-      .content { padding: 24px; flex: 1; }
-      
-      /* CÂMERA */
-      #reader { width: 100%; border-radius: 12px; overflow: hidden; border: none; box-shadow: 0 4px 12px rgba(0,0,0,0.1); background: #000; }
-      .camera-loading { text-align: center; color: #666; margin-top: 20px; font-weight: 500; }
+      .top-nav { background: white; padding: 10px 15px; display: flex; gap: 10px; z-index: 50; border-bottom: 1px solid #eee;}
+      .tab-btn { flex: 1; padding: 12px; font-weight: bold; border-radius: 8px; border: none; background: #f1f5f9; color: #64748b; font-size: 15px; transition: 0.3s; cursor: pointer;}
+      .tab-btn.active { background: #0f172a; color: white; }
 
-      /* PRODUTO EM DESTAQUE */
-      .produto-card {
-        background: #e6f4f1;
-        border-left: 5px solid var(--primary);
-        padding: 20px;
-        border-radius: 8px;
-        margin-bottom: 25px;
-      }
-      .produto-label { font-size: 12px; color: #555; text-transform: uppercase; font-weight: bold; letter-spacing: 1px; margin-bottom: 8px; }
-      .produto-nome { font-size: 22px; color: var(--primary-dark); font-weight: 800; margin: 0; word-break: break-word; }
+      #main-wrapper { position: relative; flex: 1; width: 100%; overflow: hidden; }
+      .view-panel { position: absolute; top: 0; width: 100%; height: 100%; overflow-y: auto; padding: 15px; transition: left 0.3s ease-in-out; padding-bottom: 30px;}
+      #painel-camera { left: 0; }
+      #painel-lista { left: 100%; }
 
-      /* FORMULÁRIO */
-      .form-group { margin-bottom: 20px; }
-      label { display: block; font-weight: 600; font-size: 14px; color: var(--text); margin-bottom: 8px; }
-      
-      input, select { 
-        width: 100%; 
-        padding: 14px; 
-        border: 1px solid #cbd5e0; 
-        border-radius: 10px; 
-        box-sizing: border-box; 
-        font-size: 16px; 
-        color: var(--text);
-        background-color: #f8fafc;
-        transition: border-color 0.2s, box-shadow 0.2s;
-      }
-      input:focus, select:focus { border-color: var(--primary); outline: none; box-shadow: 0 0 0 3px rgba(14, 109, 100, 0.15); background-color: #fff; }
-      
-      .row { display: flex; gap: 15px; margin-bottom: 20px; }
-      .col { flex: 1; }
-      
-      /* SEÇÃO DE SUBSTITUIÇÃO */
-      .troca-card { background: #fffaf0; border: 1px solid #feebc8; padding: 20px; border-radius: 12px; margin-top: 10px; }
-      .troca-header { display: flex; justify-content: space-between; align-items: center; }
-      .troca-header label { margin: 0; color: #dd6b20; font-size: 16px; }
-      
-      .toggle-switch { display: flex; gap: 15px; }
-      .toggle-switch label { display: flex; align-items: center; gap: 5px; font-weight: 500; margin: 0; cursor: pointer; color: #4a5568;}
-      .toggle-switch input { width: 18px; height: 18px; cursor: pointer; accent-color: #dd6b20; }
+      .card-controles { background: white; padding: 15px; border-radius: 12px; margin-bottom: 15px; box-shadow: 0 2px 8px rgba(0,0,0,0.05); }
+      #operador { width: 100%; padding: 12px; border: 2px solid #e2e8f0; border-radius: 8px; font-size: 16px; text-align: center; font-weight: bold;}
+      #operador:focus { border-color: #0f172a; outline: none; }
 
-      /* BOTÕES */
-      .btn-submit { 
-        background: var(--primary); color: white; border: none; padding: 18px; 
-        width: 100%; border-radius: 30px; font-size: 18px; font-weight: bold; 
-        cursor: pointer; margin-top: 30px; transition: background 0.2s; box-shadow: 0 4px 15px rgba(14, 109, 100, 0.3);
-      }
-      .btn-submit:active { transform: translateY(2px); }
-      .btn-submit:disabled { background: #a0aec0; box-shadow: none; cursor: not-allowed; }
-      
-      .btn-voltar {
-        background: transparent; color: #718096; border: 1px solid #cbd5e0; padding: 12px;
-        width: 100%; border-radius: 10px; font-size: 14px; font-weight: 600; cursor: pointer;
-        margin-bottom: 20px; transition: 0.2s;
-      }
-      .btn-voltar:active { background: #edf2f7; }
+      #reader { width: 100%; border-radius: 12px; overflow: hidden; display: none; background: #000; margin-bottom: 10px; box-shadow: 0 4px 15px rgba(0,0,0,0.1);}
 
-      #mensagem { text-align: center; font-weight: bold; margin-top: 15px; font-size: 15px; }
+      #fallback { display: flex; gap: 10px; background: white; padding: 12px; border-radius: 10px; box-shadow: 0 2px 8px rgba(0,0,0,0.05); margin-top: auto; z-index: 99;}
+      #cod-man { flex: 2; padding: 12px; border: 1px solid #ccc; border-radius: 6px; font-size: 16px; text-align: center; }
+      #btn-man { flex: 1; border: none; border-radius: 6px; font-weight: bold; font-size: 16px; cursor: pointer;}
+
+      #stats-container { background: white; padding: 15px; border-radius: 12px; box-shadow: 0 2px 8px rgba(0,0,0,0.05); margin-bottom: 15px; }
+      #stats-header { display: flex; justify-content: space-between; font-size: 16px; font-weight: bold; cursor: pointer; }
+      #stats-drawer { display: none; margin-top: 12px; padding-top: 12px; border-top: 1px solid #eee; font-size: 14px; }
       
-      /* CONTROLE DE TELAS */
-      .tela { display: none; }
-      .tela.ativa { display: block; animation: fadeIn 0.4s ease; }
-      @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+      .dash-geral { display: flex; justify-content: space-between; margin-bottom: 10px; }
+      .dash-item { display: flex; flex-direction: column; align-items: center; background: #f8fafc; padding: 8px 5px; border-radius: 8px; border: 1px solid #e2e8f0; width: 31%; font-size: 12px; color: #64748b; font-weight: bold; }
+      .dash-item b { font-size: 18px; margin-top: 3px; color: #0f172a;}
+      .mod-item { display: flex; justify-content: space-between; padding: 6px 0; border-bottom: 1px solid #f0f0f0; }
+
+      #historico-lista { display: flex; flex-direction: column; gap: 10px; }
+      .item-bip { border-radius: 10px; padding: 15px; display: flex; flex-direction: column; align-items: center; border: 1px solid #ddd; animation: slideDown 0.3s ease; box-shadow: 0 2px 5px rgba(0,0,0,0.1);}
+      
+      .erro-card { background-color: #f59e0b !important; color: white !important; font-weight: bold; border: none; animation: shake 0.4s; }
+
+      .txt-principal { font-size: 18px; font-weight: bold; text-align: center; }
+      .txt-mod { font-size: 12px; background: rgba(0,0,0,0.2); padding: 4px 10px; border-radius: 6px; margin-top: 6px; font-weight: bold; text-transform: uppercase; }
+      .status-badge { font-size: 12px; margin-top: 5px; font-weight: bold; background: white; color: black; padding: 2px 8px; border-radius: 4px; }
+      #ultimo-bip-container { margin-top: 15px; }
     </style>
   </head>
   <body>
-    <div class="app-container">
-      <div class="header">
-        LONA FORT EXPEDIÇÃO
-      </div>
-      
-      <div class="content">
-        <!-- TELA 1: CÂMERA AUTOMÁTICA -->
-        <div id="tela-camera" class="tela ativa">
-          <div id="reader"></div>
-          <div class="camera-loading" id="camera-status">Iniciando câmera inteligente...</div>
+    
+    <div class="app-header">
+      <img src="https://drive.google.com/thumbnail?id=1rBz6z660wObQcNU0E--LmhoKw2redIRX&sz=w800" alt="LonaFort" class="app-logo">
+      <h1 class="app-title" id="titulo-app">CARREGANDO...</h1>
+    </div>
+
+    <div class="top-nav">
+      <button class="tab-btn active" id="tab0" onclick="irParaAba(0)">📷 CÂMERA</button>
+      <button class="tab-btn" id="tab1" onclick="irParaAba(1)">📋 LISTA (<span id="cont-lista">0</span>)</button>
+    </div>
+
+    <div id="main-wrapper">
+      <div id="painel-camera" class="view-panel">
+        <div class="card-controles">
+          <input type="text" id="operador" placeholder="Digite seu Nome para iniciar">
         </div>
 
-        <!-- TELA 2: FORMULÁRIO LIMPO -->
-        <div id="tela-form" class="tela">
-          <button class="btn-voltar" onclick="reiniciarApp()">← Ler Outro Produto</button>
+        <div id="reader"></div>
 
-          <div class="produto-card">
-            <div class="produto-label">Material Identificado</div>
-            <div class="produto-nome" id="produto-display">Aguardando...</div>
+        <div id="fallback">
+          <input type="text" id="cod-man" inputmode="numeric" placeholder="Cód Manual">
+          <button id="btn-man" onclick="enviarManual()">Ok</button>
+        </div>
+
+        <div id="ultimo-bip-container">
+          <div style="color:#94a3b8;text-align:center;margin-top:10px;font-weight:bold;">Última leitura aparecerá aqui</div>
+        </div>
+      </div>
+
+      <div id="painel-lista" class="view-panel">
+        <div id="stats-container">
+          <div id="stats-header" onclick="toggleGaveta()">
+            <span id="titulo-stats">PROCESSADOS: <span id="total-val">0</span></span>
+            <span>▼ Geral</span>
           </div>
-          
-          <input type="hidden" id="produto-codigo">
-
-          <div class="row">
-            <div class="col">
-              <label>Quantidade</label>
-              <input type="number" id="quantidade" value="1" min="1">
+          <div id="stats-drawer">
+            <div class="dash-geral">
+               <div class="dash-item">Corte<b id="tot-corte">0</b></div>
+               <div class="dash-item">Embal<b id="tot-emb">0</b></div>
+               <div class="dash-item">Exped<b id="tot-ent">0</b></div>
             </div>
-            <div class="col">
-              <label>Modalidade</label>
-              <select id="modalidade">
-                <option value="" disabled selected>Selecione...</option>
-                <option value="MERCADO LIVRE">MERCADO LIVRE</option>
-                <option value="FLEX">FLEX</option>
-                <option value="SOLOPROTEC">SOLOPROTEC</option>
-                <option value="APD2">APD2</option>
-                <option value="LONAFORT">LONAFORT</option>
-                <option value="GEOMEMBRANA">GEOMEMBRANA</option>
-                <option value="SHOPEE">SHOPEE</option>
-                <option value="CORREIOS">CORREIOS</option>
-                <option value="FULL">FULL</option>
-                <option value="MAGALU">MAGALU</option>
-                <option value="RETIRA">RETIRA</option>
-                <option value="AJUSTE">AJUSTE</option>
-                <option value="GEOEXC">GEOEXC</option>
-                <option value="FLEX LON">FLEX LON</option>
-                <option value="OUTRO">OUTRO</option>
-              </select>
-            </div>
+            <div style="font-size:12px; color:#94a3b8; margin-top:10px; margin-bottom:5px; text-transform:uppercase; font-weight:bold;">Detalhes:</div>
+            <div id="lista-mods"></div>
           </div>
+        </div>
 
-          <div class="form-group">
-            <label>Pedido <span style="color:#e53e3e;">* (Mínimo 6 dígitos)</span></label>
-            <input type="number" id="pedido" placeholder="Digite os números do pedido">
-          </div>
-
-          <div class="row">
-            <div class="col">
-              <label>NF (Opcional)</label>
-              <input type="text" id="nf" placeholder="Número da Nota">
-            </div>
-            <div class="col">
-              <label>O.C. (Opcional)</label>
-              <input type="text" id="oc" placeholder="Ordem de Compra">
-            </div>
-          </div>
-
-          <div class="troca-card">
-            <div class="troca-header">
-              <label>Houve Substituição?</label>
-              <div class="toggle-switch">
-                <label><input type="radio" name="isTroca" value="sim" onchange="toggleTroca(true)"> Sim</label>
-                <label><input type="radio" name="isTroca" value="nao" onchange="toggleTroca(false)" checked> Não</label>
-              </div>
-            </div>
-            <div id="campos-troca" style="display:none; margin-top:20px; border-top: 1px dashed #f6ad55; padding-top: 15px;">
-              <label>Pedido Inicial</label>
-              <input type="text" id="pedido-inicial" placeholder="Qual era o pedido original?">
-            </div>
-          </div>
-
-          <button class="btn-submit" id="btn-enviar" onclick="enviarDados()">CONFIRMAR BAIXA</button>
-          <p id="mensagem"></p>
+        <div id="historico-lista">
+          <div style="color:#94a3b8;text-align:center;margin-top:20px;font-weight:bold;">Nenhum item na memória ainda.</div>
         </div>
       </div>
     </div>
 
     <script>
-      // =======================================================
-      const API_URL = "SUA_URL_DO_APPS_SCRIPT_AQUI"; // COLE SEU LINK AQUI
-      // =======================================================
+      // =========================================================================
+      // COLOQUE AQUI A URL DO SEU GOOGLE APPS SCRIPT (O LINK DA NOVA IMPLANTAÇÃO)
+      // =========================================================================
+      const URL_API_GOOGLE = "https://script.google.com/macros/s/AKfycbzp4spSLWEJvkdf3GqPZ9prwtzuz_HmrZ70gRbpoGbpB2-P2Sjtc1Nfrb63YWsekCO3ww/exec"; 
 
-      let html5QrCode;
+      // Puxa o setor direto da URL (ex: meugithub.io/lona?setor=corte)
+      const urlParams = new URLSearchParams(window.location.search);
+      const setorApp = (urlParams.get('setor') || 'CORTE').toUpperCase();
+      
+      let temaClasse = 'theme-corte';
+      let bgClasse = 'bg-corte';
+      
+      if(setorApp === 'EMBALAGEM') { temaClasse = 'theme-embalagem'; bgClasse = 'bg-embalagem'; }
+      if(setorApp === 'ENTREGA') { temaClasse = 'theme-entrega'; bgClasse = 'bg-entrega'; }
 
-      // Inicia a câmera automaticamente ao abrir a página
-      window.onload = () => {
-        iniciarCamera();
+      var totaisGerais = {"CORTE":0, "EMBALAGEM":0, "ENTREGA":0}, mods = {}, fila = [], proc = false, scanner = null;
+      var abaAtual = 0, codUltimoScan = "", timeUltimoScan = 0;
+      
+      var inputOp = document.getElementById('operador');
+      inputOp.value = localStorage.getItem('opLona') || '';
+      inputOp.onchange = () => { localStorage.setItem('opLona', inputOp.value); iniciarSistema(); };
+
+      document.getElementById('cod-man').addEventListener("keyup", function(e) { if (e.key === "Enter") enviarManual(); });
+
+      window.onload = function() {
+        document.getElementById('titulo-app').innerText = setorApp;
+        document.getElementById('titulo-app').classList.add(temaClasse);
+        document.getElementById('btn-man').classList.add(bgClasse);
+        document.getElementById('titulo-stats').classList.add(temaClasse);
+        document.getElementById('reader').style.border = `4px solid ${setorApp === 'EMBALAGEM' ? '#3b82f6' : (setorApp === 'ENTREGA' ? '#10b981' : '#475569')}`;
+        
+        if(inputOp.value !== "") iniciarSistema();
       };
 
-      function tocarBip() {
+      function iniciarSistema() {
+        buscarResumoServidor();
+        if(!scanner) { setTimeout(ligar, 300); }
+      }
+
+      // NOVO: CONEXÃO COM O GOOGLE USANDO FETCH
+      async function buscarResumoServidor() {
         try {
-          let ctx = new (window.AudioContext || window.webkitAudioContext)();
-          let osc = ctx.createOscillator();
-          let gain = ctx.createGain();
-          osc.connect(gain);
-          gain.connect(ctx.destination);
-          osc.type = 'sine';
-          osc.frequency.setValueAtTime(1200, ctx.currentTime); 
-          gain.gain.setValueAtTime(1, ctx.currentTime);
-          gain.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + 0.15);
-          osc.start(ctx.currentTime);
-          osc.stop(ctx.currentTime + 0.15);
-        } catch (e) {}
-        if(navigator.vibrate) navigator.vibrate(100);
-      }
-
-      function iniciarCamera() {
-        html5QrCode = new Html5Qrcode("reader");
-        html5QrCode.start(
-          { facingMode: "environment" }, 
-          { fps: 15, qrbox: { width: 250, height: 250 } }, 
-          onScanSuccess, 
-          (err) => {}
-        ).then(() => {
-          document.getElementById('camera-status').style.display = 'none';
-        }).catch(err => { 
-          document.getElementById('camera-status').innerHTML = "Câmera bloqueada. Verifique as permissões do navegador."; 
-          document.getElementById('camera-status').style.color = "#e53e3e";
-        });
-      }
-
-      function onScanSuccess(texto) {
-        tocarBip();
-        html5QrCode.stop();
-        
-        // Transição de tela
-        document.getElementById('tela-camera').classList.remove('ativa');
-        document.getElementById('tela-form').classList.add('ativa');
-        
-        // Joga o texto em maiúsculo na tela
-        let lido = texto.trim().toUpperCase();
-        document.getElementById('produto-codigo').value = lido;
-        document.getElementById('produto-display').innerText = lido;
-      }
-
-      function reiniciarApp() {
-        document.getElementById('tela-form').classList.remove('ativa');
-        document.getElementById('tela-camera').classList.add('ativa');
-        document.getElementById('camera-status').style.display = 'block';
-        document.getElementById('mensagem').innerText = '';
-        iniciarCamera();
-      }
-
-      function toggleTroca(mostrar) {
-        document.getElementById('campos-troca').style.display = mostrar ? 'block' : 'none';
-      }
-
-      function enviarDados() {
-        let btn = document.getElementById('btn-enviar');
-        let msg = document.getElementById('mensagem');
-        
-        let payload = {
-          produto: document.getElementById('produto-codigo').value,
-          quantidade: document.getElementById('quantidade').value,
-          modalidade: document.getElementById('modalidade').value,
-          pedido: document.getElementById('pedido').value.trim(),
-          nf: document.getElementById('nf').value.trim(),
-          oc: document.getElementById('oc').value.trim(),
-          isTroca: document.querySelector('input[name="isTroca"]:checked').value,
-          pedidoInicial: document.getElementById('pedido-inicial').value.trim()
-        };
-
-        // VALIDAÇÕES RIGOROSAS
-        if (!payload.modalidade) {
-          alert("Por favor, selecione uma Modalidade."); return;
+          const requisicao = await fetch(URL_API_GOOGLE, {
+            method: 'POST',
+            body: JSON.stringify({ acao: "buscarResumo", etapa: setorApp })
+          });
+          const res = await requisicao.json();
+          totaisGerais = res.totais; 
+          mods = res.mods; 
+          atualizarGaveta(); 
+        } catch (e) {
+          console.error("Erro ao buscar resumo:", e);
         }
-        if (!payload.pedido || payload.pedido.length < 6) {
-          alert("O campo Pedido é obrigatório e deve conter no mínimo 6 números."); 
-          document.getElementById('pedido').focus();
-          return;
+      }
+
+      function irParaAba(index) {
+        abaAtual = index;
+        document.getElementById('tab0').className = index === 0 ? "tab-btn active" : "tab-btn";
+        document.getElementById('tab1').className = index === 1 ? "tab-btn active" : "tab-btn";
+        document.getElementById('painel-camera').style.left = index === 0 ? "0" : "-100%";
+        document.getElementById('painel-lista').style.left = index === 0 ? "100%" : "0";
+      }
+
+      function toggleGaveta() { let d = document.getElementById('stats-drawer'); d.style.display = (d.style.display==='block')?'none':'block'; }
+
+      function atualizarGaveta() {
+        document.getElementById('total-val').innerText = totaisGerais[setorApp] || 0;
+        document.getElementById('tot-corte').innerText = totaisGerais["CORTE"] || 0;
+        document.getElementById('tot-emb').innerText = totaisGerais["EMBALAGEM"] || 0;
+        document.getElementById('tot-ent').innerText = totaisGerais["ENTREGA"] || 0;
+        let h = ""; 
+        for(let k in mods) h += `<div class='mod-item'><span>${k}</span><b>${mods[k]}</b></div>`;
+        document.getElementById('lista-mods').innerHTML = h || "<div style='text-align:center; color:#94a3b8;'>Nenhum pedido hoje.</div>";
+      }
+
+      function ligar() {
+        try {
+          if (!scanner) { scanner = new Html5Qrcode("reader"); }
+          document.getElementById('reader').style.display = 'block';
+          scanner.start(
+            { facingMode: "environment" }, 
+            { fps: 15, qrbox: 200 }, 
+            function(c) { adicionarAFila(c); }
+          ).catch(function(err) { console.error("Erro de câmera:", err); });
+        } catch(err) {}
+      }
+
+      function enviarManual() { 
+        if(inputOp.value === "") { alert("Digite seu nome!"); return; }
+        let v = document.getElementById('cod-man').value; 
+        if(v) { adicionarAFila(v); document.getElementById('cod-man').value=""; } 
+      }
+
+      function adicionarAFila(codigo) {
+        if(inputOp.value === "") { alert("Digite seu nome primeiro!"); return; }
+        
+        let agora = Date.now();
+        let codString = String(codigo).trim();
+
+        if(codString === codUltimoScan && (agora - timeUltimoScan) < 4000) return;
+        codUltimoScan = codString; timeUltimoScan = agora;
+        bip(1000, 0.1);
+
+        let codLimpo = codString.replace("Ped:", "").split('|')[0].trim();
+        let codCurto = codLimpo.length > 4 ? codLimpo.slice(-4) : codLimpo;
+        
+        let item = { id: Date.now(), c: codString, s: "⏳ GRAVANDO...", lp: "?", ped: codCurto, mod: "...", e: false };
+        fila.push(item); 
+
+        renderTelas();
+        if(!proc) processar();
+      }
+
+      function renderTelas() {
+        document.getElementById('cont-lista').innerText = fila.length;
+        if(fila.length === 0) return;
+
+        function gerarHtmlCartao(i) {
+           let cardClasse = i.e ? "erro-card" : bgClasse; 
+           return `<div id="${i.id}" class="item-bip ${cardClasse}">
+             <div class="txt-principal">L.ped ${i.lp} | ${i.ped}</div>
+             <div class="txt-mod">${i.mod}</div>
+             ${i.s !== "✅ OK" || i.e ? `<div class="status-badge">${i.s}</div>` : ""}
+           </div>`;
         }
 
-        btn.disabled = true; 
-        btn.innerText = "Enviando dados..."; 
-        msg.innerText = "";
+        document.getElementById('ultimo-bip-container').innerHTML = gerarHtmlCartao(fila[fila.length-1]);
+        let h = ""; [...fila].reverse().forEach(i => { h += gerarHtmlCartao(i); });
+        document.getElementById('historico-lista').innerHTML = h;
+      }
+
+      // NOVO: ENVIO DE DADOS PARA O GOOGLE USANDO FETCH
+      async function processar() {
+        let i = fila.find(x => x.s === "⏳ GRAVANDO...");
+        if(!i) { proc = false; return; }
+        proc = true;
         
-        fetch(API_URL, { method: 'POST', body: JSON.stringify(payload) })
-        .then(res => res.json())
-        .then(res => {
-          if(res.sucesso) {
-            tocarBip(); 
-            msg.innerText = "✓ BAIXA FINALIZADA!"; 
-            msg.style.color = "#2e7d32";
-            btn.style.background = "#2e7d32";
-            btn.innerText = "SUCESSO";
-            setTimeout(() => { location.reload(); }, 2000);
-          } else {
-            msg.innerText = "Erro: " + res.erro; 
-            msg.style.color = "#e53e3e"; 
-            btn.disabled = false; 
-            btn.innerText = "Tentar Novamente";
+        try {
+          const requisicao = await fetch(URL_API_GOOGLE, {
+            method: 'POST',
+            body: JSON.stringify({ 
+              acao: "processarLogistica", 
+              codigo: i.c, 
+              operador: inputOp.value, 
+              etapa: setorApp 
+            })
+          });
+          
+          const r = await requisicao.json();
+          let idx = fila.findIndex(x => x.id === i.id);
+          
+          if(r.sucesso) {
+            bip(1500, 0.3); 
+            fila[idx].s = "✅ OK"; fila[idx].lp = r.lped; fila[idx].ped = r.cod; fila[idx].mod = r.mod;
+            totaisGerais[setorApp]++;
+            let nomeMod = r.mod.replace(" (Pronto)", ""); 
+            mods[nomeMod] = (mods[nomeMod] || 0) + 1; 
+            atualizarGaveta();
+          } else { 
+            bip(200, 0.5); fila[idx].s = r.erro; fila[idx].e = true; 
           }
-        }).catch(err => { 
-          msg.innerText = "Erro de conexão (Sem internet)."; 
-          msg.style.color = "#e53e3e"; 
-          btn.disabled = false; 
-          btn.innerText = "Tentar Novamente"; 
-        });
+        } catch (err) {
+          let idx = fila.findIndex(x => x.id === i.id);
+          bip(200, 0.5); fila[idx].s = "❌ Erro. Tente dnv."; fila[idx].e = true;
+        }
+
+        renderTelas(); 
+        processar();
+      }
+
+      function bip(f, d) {
+        try {
+            if (navigator.vibrate) navigator.vibrate(50);
+            var actx = window.AudioContext || window.webkitAudioContext;
+            if (actx) {
+                var c = new actx(); var o = c.createOscillator(); var g = c.createGain();
+                o.connect(g); g.connect(c.destination); 
+                o.frequency.value = f; g.gain.value = 0.1;
+                o.start(); o.stop(c.currentTime + d);
+            }
+        } catch(e) {}
       }
     </script>
   </body>
