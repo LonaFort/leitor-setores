@@ -11,21 +11,20 @@
       @keyframes slideIn { from { opacity: 0; transform: translateY(-10px); } to { opacity: 1; transform: translateY(0); } }
       .animate-slide-in { animation: slideIn 0.3s cubic-bezier(0.4, 0, 0.2, 1); }
       
-      @keyframes flashSuccess { 0% { box-shadow: inset 0 0 0 12px #10b981; } 100% { box-shadow: inset 0 0 0 0 transparent; } }
-      @keyframes flashError { 0% { box-shadow: inset 0 0 0 12px #ef4444; } 100% { box-shadow: inset 0 0 0 0 transparent; } }
-      .flash-verde { animation: flashSuccess 0.6s ease-out; }
-      .flash-vermelho { animation: flashError 0.6s ease-out; }
-      
       body { -webkit-tap-highlight-color: transparent; }
       
-      #box-leitor { position: relative; display: flex; justify-content: center; align-items: center; height: 280px; width: 100%; }
+      /* Câmera flexível: encolhe se faltar espaço, não corta a tela */
+      #box-leitor { position: relative; display: flex; justify-content: center; align-items: center; width: 100%; min-height: 200px; }
       #reader { width: 100%; height: 100%; border-radius: 0.75rem; overflow: hidden; position: absolute; inset: 0; background: #000; }
       #reader video, #reader canvas { width: 100% !important; height: 100% !important; object-fit: cover !important; position: absolute !important; top: 0 !important; left: 0 !important; border-radius: 0.75rem !important;}
       #qr-shaded-region { border-radius: 0.75rem !important; }
     </style>
   </head>
-  <body class="bg-slate-50 text-slate-800 h-screen flex flex-col overflow-hidden font-sans selection:bg-teal-200" id="body-app">
+  <body class="bg-slate-50 text-slate-800 h-screen flex flex-col overflow-hidden font-sans selection:bg-teal-200 relative">
     
+    <!-- PELÍCULA DE FLASH (Impossível de falhar) -->
+    <div id="flash-overlay" class="absolute inset-0 z-[100] pointer-events-none bg-transparent transition-colors duration-300"></div>
+
     <header class="bg-white px-4 py-3 shadow-sm z-50 flex items-center justify-between border-b border-slate-100 flex-shrink-0">
       <img src="https://drive.google.com/thumbnail?id=1rBz6z660wObQcNU0E--LmhoKw2redIRX&sz=w800" alt="LonaFort" class="h-8 object-contain">
       <div class="flex items-center gap-2">
@@ -45,31 +44,29 @@
       
       <section id="painel-camera" class="absolute inset-0 w-full h-full overflow-y-auto p-4 transition-transform duration-300 transform translate-x-0 flex flex-col">
         
-        <div class="bg-white p-1 rounded-xl shadow-sm border border-slate-200 mb-4 flex items-center px-3">
+        <div class="bg-white p-1 rounded-xl shadow-sm border border-slate-200 mb-3 flex items-center px-3 flex-shrink-0">
           <i class="ph-bold ph-user text-slate-400 text-lg mr-2"></i>
-          <input type="text" id="operador" placeholder="Seu nome para iniciar..." class="w-full py-3 bg-transparent text-slate-700 font-bold placeholder-slate-400 outline-none">
+          <input type="text" id="operador" placeholder="Seu nome..." class="w-full py-2 bg-transparent text-slate-700 font-bold placeholder-slate-400 outline-none">
         </div>
 
-        <div id="box-leitor" class="bg-slate-900 rounded-2xl shadow-inner mb-4 overflow-hidden border-4 border-slate-800 transition-colors">
-          
+        <div id="box-leitor" class="flex-1 bg-slate-900 rounded-2xl shadow-inner mb-3 overflow-hidden border-4 border-slate-800 transition-colors">
           <div id="overlay-pausa" onclick="acordarCamera()" class="absolute inset-0 z-40 bg-slate-900/95 flex flex-col items-center justify-center text-white cursor-pointer hidden backdrop-blur-md">
             <div class="bg-white/10 p-4 rounded-full mb-3 animate-pulse">
               <i class="ph-bold ph-power text-4xl text-white"></i>
             </div>
             <span class="font-black text-lg">Câmera em Repouso</span>
-            <span class="text-sm text-slate-400 font-bold mt-1">Toque aqui para reativar</span>
+            <span class="text-sm text-slate-400 font-bold mt-1">Toque para reativar</span>
           </div>
-
           <div id="reader" class="flex items-center justify-center text-slate-400 font-medium text-sm text-center">Aguardando operador...</div>
         </div>
 
-        <div class="flex gap-2 mb-4 flex-shrink-0">
+        <div class="flex gap-2 mb-3 flex-shrink-0">
           <input type="text" id="cod-man" inputmode="numeric" placeholder="Digitar Cód..." class="flex-1 bg-white border border-slate-200 rounded-xl px-4 py-3 text-center font-bold text-slate-700 shadow-sm outline-none focus:border-slate-400">
           <button id="btn-man" onclick="enviarManual()" class="px-6 rounded-xl font-black text-white shadow-sm transition-transform active:scale-95 flex items-center justify-center"><i class="ph-bold ph-arrow-right text-xl"></i></button>
         </div>
 
-        <div id="ultimo-bip-container" class="mt-auto flex-shrink-0">
-          <div class="text-center text-slate-400 text-sm font-medium py-4 flex flex-col items-center gap-1"><i class="ph-bold ph-barcode text-3xl opacity-50"></i> Posição da última leitura</div>
+        <div id="ultimo-bip-container" class="mt-auto flex-shrink-0 pb-1 w-full">
+          <div class="text-center text-slate-400 text-sm font-medium py-2 flex flex-col items-center gap-1"><i class="ph-bold ph-barcode text-3xl opacity-50"></i> Posição da última leitura</div>
         </div>
       </section>
 
@@ -101,6 +98,9 @@
     </main>
 
     <script>
+      // =========================================================================
+      // COLOQUE SEU LINK DO GOOGLE ABAIXO (SE A NOVA IMPLANTAÇÃO GEROU UM NOVO)
+      // =========================================================================
       const URL_API_GOOGLE = "https://script.google.com/macros/s/AKfycbzp4spSLWEJvkdf3GqPZ9prwtzuz_HmrZ70gRbpoGbpB2-P2Sjtc1Nfrb63YWsekCO3ww/exec"; 
 
       const urlParams = new URLSearchParams(window.location.search);
@@ -116,7 +116,6 @@
 
       var totaisGerais = {"CORTE":0, "EMBALAGEM":0, "ENTREGA":0}, mods = {}, fila = [], proc = false, scanner = null;
       var abaAtual = 0, codUltimoScan = "", timeUltimoScan = 0;
-      
       var timerRepouso = null;
       const TEMPO_REPOUSO_MS = 120000;
       
@@ -130,11 +129,11 @@
       });
       document.getElementById('cod-man').addEventListener("keyup", function(e) { if (e.key === "Enter") enviarManual(); });
 
+      // FLASH BLINDADO DE TELA INTEIRA
       function piscarTela(tipo) {
-        const bd = document.getElementById('body-app');
-        bd.classList.remove('flash-verde', 'flash-vermelho');
-        void bd.offsetWidth;
-        bd.classList.add(tipo === 'ok' ? 'flash-verde' : 'flash-vermelho');
+        const over = document.getElementById('flash-overlay');
+        over.className = `absolute inset-0 z-[100] pointer-events-none transition-colors duration-300 ${tipo === 'ok' ? 'bg-emerald-500/40' : 'bg-red-500/40'}`;
+        setTimeout(() => { over.className = 'absolute inset-0 z-[100] pointer-events-none transition-colors duration-500 bg-transparent'; }, 400);
       }
 
       window.onload = function() {
@@ -189,7 +188,7 @@
             { fps: 15, qrbox: { width: 250, height: 250 } }, 
             function(c) { adicionarAFila(c); }
           ).catch(function(err) { 
-            document.getElementById('reader').innerHTML = `<div class="text-red-500 font-bold p-4 absolute inset-0 flex flex-col items-center justify-center text-center text-xs gap-2"><i class="ph-bold ph-warning text-2xl"></i> Câmera bloqueada pelo aparelho.<br><br>Detalhe: ${err}</div>`;
+            document.getElementById('reader').innerHTML = `<div class="text-red-500 font-bold p-4 absolute inset-0 flex flex-col items-center justify-center text-center text-xs gap-2"><i class="ph-bold ph-warning text-2xl"></i> Câmera bloqueada.<br>Detalhe: ${err}</div>`;
           });
         } catch(err) { console.error(err); }
       }
@@ -258,7 +257,7 @@
 
         let codCurto = idEncontrado.length > 6 ? idEncontrado.slice(-6) : idEncontrado;
         
-        let item = { id: Date.now(), c: idEncontrado, s: "BUSCANDO...", lp: "?", ped: codCurto, mod: "...", qtd: "-", status: 'load' };
+        let item = { id: Date.now(), c: idEncontrado, s: "BUSCANDO...", lp: "...", ped: codCurto, mod: "...", qtd: "-", status: 'load' };
         fila.push(item); 
 
         renderTelas();
@@ -295,17 +294,14 @@
            return `
            <div id="${i.id}" class="animate-slide-in p-4 rounded-2xl border flex items-center justify-between gap-3 transition-all duration-300 ${cardStyle}">
              <div class="flex-1 overflow-hidden">
-               
                <div class="flex items-center gap-3 mb-2">
-                 <span class="text-2xl font-black bg-slate-900 text-white px-3 py-1 rounded-lg shadow-sm">L. ${i.lp}</span>
-                 <span class="text-base font-bold opacity-80 font-mono tracking-wide">#...${i.ped}</span>
+                 <span class="text-2xl font-black bg-slate-900 text-white px-3 py-1 rounded-lg shadow-sm">L. ${i.lp || '?'}</span>
+                 <span class="text-base font-bold opacity-80 font-mono tracking-wide">#...${i.ped || ''}</span>
                </div>
-               
                <div class="flex items-center gap-2">
-                 <span class="text-[11px] font-black uppercase px-2 py-1.5 rounded-md ${modStyle} truncate max-w-[60%]">${i.mod}</span>
-                 <span class="text-[12px] font-black uppercase px-2 py-1.5 rounded-md ${infoStyle} shadow-sm whitespace-nowrap">QTD: ${i.qtd}</span>
+                 <span class="text-[11px] font-black uppercase px-2 py-1.5 rounded-md ${modStyle} truncate max-w-[60%]">${i.mod || '...'}</span>
+                 <span class="text-[12px] font-black uppercase px-2 py-1.5 rounded-md ${infoStyle} shadow-sm whitespace-nowrap">QTD: ${i.qtd || '-'}</span>
                </div>
-               
                ${i.status !== 'ok' ? `<p class="text-xs font-bold mt-2 opacity-90">${i.s}</p>` : ''}
              </div>
              <div class="flex-shrink-0 mr-1">${icon}</div>
