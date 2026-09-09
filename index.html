@@ -198,13 +198,37 @@
     function adicionarFila(codigoRaw) {
       if(!inputOp.value.trim()) { alert("Digite o nome do Operador antes de bipar!"); return; }
       let id = Date.now().toString();
-      let c = codigoRaw; let lped = "";
-      if(c.includes("L.") || c.includes("L:")) {
-        lped = c.replace(/[^0-9]/g, ""); c = "";
+      let c = codigoRaw; 
+      let lped = "";
+      
+      // 1. NOVO RECORTE A LASER DA SUA ETIQUETA (L.ped 1 - 20000...)
+      let regex = /L\.ped\s+(\d+)\s*-\s*([A-Za-z0-9]+)/i;
+      let match = c.match(regex);
+      
+      if(match) {
+         lped = match[1]; // Salva só a linha (Ex: 1)
+         c = match[2];    // Salva só o código gigante
+      } else if(c.includes("L.") || c.includes("L:")) {
+         lped = c.replace(/[^0-9]/g, ""); c = "";
       }
+
       if(fila.some(x => (x.c === c && c !== "") || (x.lped === lped && lped !== ""))) return;
       
-      fila.push({ id: id, c: c, lped: lped, status: 'load', s: 'Enviando...' });
+      // 2. MOSTRA NA TELA IMEDIATAMENTE (Acaba com o ponto de interrogação!)
+      let pedHtmlC = c ? `<span class="opacity-75">${c.slice(0, -6)}</span><b class="text-[14px] text-amber-300 ml-[1px]">${c.slice(-6)}</b>` : `<span class="opacity-80">Enviando...</span>`;
+      
+      fila.push({ 
+        id: id, 
+        c: c, 
+        lped: lped, 
+        status: 'load', 
+        s: 'Enviando pro Google...',
+        lp: lped || '?',
+        pedHtml: pedHtmlC,
+        mod: 'Buscando...',
+        qtd: '-'
+      });
+      
       renderTelas();
       if(!proc) processar();
     }
