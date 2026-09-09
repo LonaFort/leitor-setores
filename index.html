@@ -1,399 +1,368 @@
 <!DOCTYPE html>
 <html lang="pt-BR">
-  <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
-    <title>LonaFort WMS</title>
-    <script src="https://cdn.tailwindcss.com"></script>
-    <script src="https://unpkg.com/html5-qrcode"></script>
-    <script src="https://unpkg.com/@phosphor-icons/web"></script>
-    <style>
-      @keyframes slideIn { from { opacity: 0; transform: translateY(-10px); } to { opacity: 1; transform: translateY(0); } }
-      .animate-slide-in { animation: slideIn 0.3s cubic-bezier(0.4, 0, 0.2, 1); }
-      
-      body { -webkit-tap-highlight-color: transparent; }
-      
-      #box-leitor { position: relative; display: flex; justify-content: center; align-items: center; width: 100%; min-height: 200px; }
-      #reader { width: 100%; height: 100%; border-radius: 0.75rem; overflow: hidden; position: absolute; inset: 0; background: #000; }
-      #reader video, #reader canvas { width: 100% !important; height: 100% !important; object-fit: cover !important; position: absolute !important; top: 0 !important; left: 0 !important; border-radius: 0.75rem !important;}
-      #qr-shaded-region { border-radius: 0.75rem !important; }
-    </style>
-  </head>
-  <body class="bg-slate-50 text-slate-800 h-screen flex flex-col overflow-hidden font-sans selection:bg-teal-200 relative">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>WMS Coletor</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://unpkg.com/@phosphor-icons/web"></script>
+  <script src="https://unpkg.com/html5-qrcode"></script>
+  <style>
+    @keyframes flash-ok { 0% { background-color: #22c55e; } 100% { background-color: transparent; } }
+    @keyframes flash-erro { 0% { background-color: #ef4444; } 100% { background-color: transparent; } }
+    @keyframes shake { 0%, 100% { transform: translateX(0); } 25% { transform: translateX(-5px); } 75% { transform: translateX(5px); } }
+    @keyframes slideIn { from { opacity: 0; transform: translateY(-10px); } to { opacity: 1; transform: translateY(0); } }
     
-    <!-- PELÍCULA DE FLASH -->
-    <div id="flash-overlay" class="absolute inset-0 z-[100] pointer-events-none bg-transparent transition-colors duration-300"></div>
+    .animate-flash-ok { animation: flash-ok 0.4s ease-out; }
+    .animate-flash-erro { animation: flash-erro 0.4s ease-out; }
+    .animate-shake { animation: shake 0.3s ease-in-out; }
+    .animate-slide-in { animation: slideIn 0.3s ease-out forwards; }
+    
+    /* Câmera flexível */
+    #reader { width: 100%; border-radius: 0.75rem; overflow: hidden; border: none !important; }
+    #reader video { object-fit: cover; }
+  </style>
+</head>
+<body class="bg-slate-50 text-slate-800 h-screen flex flex-col font-sans overflow-hidden transition-colors duration-300" id="body-bg">
 
-    <header class="bg-white px-4 py-3 shadow-sm z-50 flex items-center justify-between border-b border-slate-100 flex-shrink-0">
-      <img src="https://drive.google.com/thumbnail?id=1rBz6z660wObQcNU0E--LmhoKw2redIRX&sz=w800" alt="LonaFort" class="h-8 object-contain">
-      <div class="flex items-center gap-2">
-        <i id="icone-setor" class="ph-fill text-xl"></i>
-        <h1 class="text-lg font-black tracking-wide uppercase" id="titulo-app">...</h1>
-      </div>
-    </header>
+  <!-- CABEÇALHO -->
+  <header class="bg-white px-4 py-3 shadow-sm z-10 flex items-center justify-between shrink-0">
+    <div class="flex items-center gap-2">
+      <img src="https://geomembrana.com.br/wp-content/uploads/2023/12/LonaFort_Logo_2-300x70.png" alt="LonaFort" class="h-6">
+    </div>
+    <select id="setor" class="bg-slate-100 border border-slate-200 text-slate-700 text-sm font-bold rounded-lg px-3 py-1.5 focus:outline-none focus:ring-2 focus:ring-blue-500" onchange="mudarSetor()">
+      <option value="CORTE">✂️ CORTE</option>
+      <option value="EMBALAGEM">📦 EMBALAGEM</option>
+      <option value="ENTREGA">🚚 ENTREGA</option>
+    </select>
+  </header>
 
-    <div class="bg-white p-3 shadow-sm z-40 flex-shrink-0">
-      <div class="flex bg-slate-100 rounded-xl p-1 gap-1">
-        <button id="tab0" onclick="irParaAba(0)" class="flex-1 py-2 text-sm font-bold rounded-lg transition-all text-slate-400 bg-transparent flex items-center justify-center gap-2"><i class="ph-bold ph-scan"></i> Câmera</button>
-        <button id="tab1" onclick="irParaAba(1)" class="flex-1 py-2 text-sm font-bold rounded-lg transition-all text-slate-400 bg-transparent flex items-center justify-center gap-2"><i class="ph-bold ph-list-checks"></i> Fila (<span id="cont-lista">0</span>)</button>
+  <!-- OPERADOR -->
+  <div class="px-4 py-2 bg-slate-100 border-b border-slate-200 shrink-0 flex items-center gap-2">
+    <i class="ph ph-user text-slate-400 text-lg"></i>
+    <input type="text" id="operador" placeholder="Nome do Operador" class="bg-transparent border-none focus:ring-0 text-sm font-semibold w-full text-slate-700 placeholder-slate-400 outline-none uppercase">
+  </div>
+
+  <!-- CONTEÚDO PRINCIPAL (Scrollável) -->
+  <main class="flex-1 overflow-y-auto p-4 flex flex-col gap-4">
+    
+    <!-- GAVETA DE TOTAL PROCESSADO -->
+    <div class="bg-white border border-slate-200 rounded-2xl p-4 shadow-sm flex items-center justify-between">
+      <div>
+        <p class="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1">Total Processado</p>
+        <p class="text-3xl font-black text-slate-800 leading-none" id="total-processado">0</p>
       </div>
+      <button onclick="buscarResumoServidor()" class="p-2 bg-slate-50 rounded-xl border border-slate-200 active:bg-slate-100 transition-colors">
+        <i class="ph ph-arrows-clockwise text-slate-500 text-xl" id="icone-sync"></i>
+      </button>
     </div>
 
-    <main class="relative flex-1 w-full overflow-hidden">
+    <!-- TABS: CÂMERA E FILA -->
+    <div class="flex rounded-xl bg-slate-200 p-1 shrink-0">
+      <button onclick="alternarAba('camera')" id="btn-tab-camera" class="flex-1 py-2 rounded-lg text-sm font-bold bg-white shadow text-slate-800 transition-all flex items-center justify-center gap-2">
+        <i class="ph ph-camera text-lg"></i> Câmera
+      </button>
+      <button onclick="alternarAba('fila')" id="btn-tab-fila" class="flex-1 py-2 rounded-lg text-sm font-bold text-slate-500 transition-all flex items-center justify-center gap-2">
+        <i class="ph ph-list-dashes text-lg"></i> Fila (<span id="cont-lista">0</span>)
+      </button>
+    </div>
+
+    <!-- ABA CÂMERA -->
+    <div id="aba-camera" class="flex flex-col gap-4">
+      <div class="bg-slate-900 rounded-2xl overflow-hidden shadow-inner relative" style="height: 250px;">
+        <div id="reader" class="h-full w-full"></div>
+        <div class="absolute inset-0 pointer-events-none border-[3px] border-white/20 m-6 rounded-xl"></div>
+      </div>
       
-      <section id="painel-camera" class="absolute inset-0 w-full h-full overflow-y-auto p-4 transition-transform duration-300 transform translate-x-0 flex flex-col">
+      <form onsubmit="adicionarManual(event)" class="flex gap-2">
+        <input type="text" id="input-manual" placeholder="Digitar código..." class="flex-1 bg-white border border-slate-200 rounded-xl px-4 py-3 text-sm font-bold focus:outline-none focus:border-slate-400 focus:ring-1 focus:ring-slate-400 shadow-sm" autocomplete="off">
+        <button type="submit" class="bg-slate-800 text-white px-5 rounded-xl font-bold active:scale-95 transition-transform shadow-sm">
+          <i class="ph ph-arrow-right text-lg"></i>
+        </button>
+      </form>
+
+      <!-- ÚLTIMO BIP (Destaque) -->
+      <div id="ultimo-bip-container"></div>
+    </div>
+
+    <!-- ABA FILA (Histórico) -->
+    <div id="aba-fila" class="hidden flex-col gap-2 pb-10">
+      <div id="historico-lista" class="flex flex-col gap-2"></div>
+    </div>
+  </main>
+
+  <script>
+    // ==============================================================================
+    // CONFIGURAÇÕES PRINCIPAIS
+    // ==============================================================================
+    const URL_API_GOOGLE = "https://script.google.com/macros/s/AKfycbyLm701Aoi5omM-MMYbcx9KA4swXG4b8Y4mxkkTv4O_WbN91L31WSkbL0NLldorkiNM1g/exec";
+    
+    let html5QrcodeScanner = null;
+    let fila = [];
+    let proc = false;
+    let setorApp = "CORTE";
+    let inputOp = document.getElementById('operador');
+    let totaisGerais = { "CORTE": 0, "EMBALAGEM": 0, "ENTREGA": 0 };
+
+    const temas = {
+      "CORTE": { bg: "bg-slate-700" },
+      "EMBALAGEM": { bg: "bg-blue-600" },
+      "ENTREGA": { bg: "bg-emerald-600" }
+    };
+
+    // ==============================================================================
+    // INICIALIZAÇÃO
+    // ==============================================================================
+    window.onload = () => {
+      let opSalvo = localStorage.getItem('opLonaFort');
+      if(opSalvo) inputOp.value = opSalvo;
+      
+      let setorSalvo = localStorage.getItem('setorLonaFort');
+      if(setorSalvo) {
+        document.getElementById('setor').value = setorSalvo;
+        setorApp = setorSalvo;
+      }
+      
+      inputOp.addEventListener('change', () => localStorage.setItem('opLonaFort', inputOp.value.trim()));
+      
+      iniciarCamera();
+      buscarResumoServidor();
+    };
+
+    function mudarSetor() {
+      setorApp = document.getElementById('setor').value;
+      localStorage.setItem('setorLonaFort', setorApp);
+      fila = [];
+      renderTelas();
+      buscarResumoServidor();
+    }
+
+    function alternarAba(aba) {
+      if(aba === 'camera') {
+        document.getElementById('aba-camera').classList.remove('hidden');
+        document.getElementById('aba-camera').classList.add('flex');
+        document.getElementById('aba-fila').classList.add('hidden');
+        document.getElementById('aba-fila').classList.remove('flex');
         
-        <div class="bg-white p-1 rounded-xl shadow-sm border border-slate-200 mb-3 flex items-center px-3 flex-shrink-0">
-          <i class="ph-bold ph-user text-slate-400 text-lg mr-2"></i>
-          <input type="text" id="operador" placeholder="Seu nome..." class="w-full py-2 bg-transparent text-slate-700 font-bold placeholder-slate-400 outline-none">
-        </div>
+        document.getElementById('btn-tab-camera').className = "flex-1 py-2 rounded-lg text-sm font-bold bg-white shadow text-slate-800 transition-all flex items-center justify-center gap-2";
+        document.getElementById('btn-tab-fila').className = "flex-1 py-2 rounded-lg text-sm font-bold text-slate-500 transition-all flex items-center justify-center gap-2";
+      } else {
+        document.getElementById('aba-fila').classList.remove('hidden');
+        document.getElementById('aba-fila').classList.add('flex');
+        document.getElementById('aba-camera').classList.add('hidden');
+        document.getElementById('aba-camera').classList.remove('flex');
+        
+        document.getElementById('btn-tab-fila').className = "flex-1 py-2 rounded-lg text-sm font-bold bg-white shadow text-slate-800 transition-all flex items-center justify-center gap-2";
+        document.getElementById('btn-tab-camera').className = "flex-1 py-2 rounded-lg text-sm font-bold text-slate-500 transition-all flex items-center justify-center gap-2";
+      }
+    }
 
-        <div id="box-leitor" class="flex-1 bg-slate-900 rounded-2xl shadow-inner mb-3 overflow-hidden border-4 border-slate-800 transition-colors">
-          <div id="overlay-pausa" onclick="acordarCamera()" class="absolute inset-0 z-40 bg-slate-900/95 flex flex-col items-center justify-center text-white cursor-pointer hidden backdrop-blur-md">
-            <div class="bg-white/10 p-4 rounded-full mb-3 animate-pulse">
-              <i class="ph-bold ph-power text-4xl text-white"></i>
-            </div>
-            <span class="font-black text-lg">Câmera em Repouso</span>
-            <span class="text-sm text-slate-400 font-bold mt-1">Toque para reativar</span>
-          </div>
-          <!-- Texto inicial alterado para Iniciando câmera -->
-          <div id="reader" class="flex items-center justify-center text-slate-400 font-medium text-sm text-center">Iniciando câmera...</div>
-        </div>
+    // ==============================================================================
+    // LÓGICA DE SENSOR (AUDIO E VISUAL)
+    // ==============================================================================
+    const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+    function bip(freq, vol) {
+      try {
+        if(audioCtx.state === 'suspended') audioCtx.resume();
+        const osc = audioCtx.createOscillator();
+        const gain = audioCtx.createGain();
+        osc.connect(gain);
+        gain.connect(audioCtx.destination);
+        osc.type = 'square';
+        osc.frequency.value = freq;
+        gain.gain.setValueAtTime(vol, audioCtx.currentTime);
+        gain.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.1);
+        osc.start();
+        osc.stop(audioCtx.currentTime + 0.1);
+      } catch (e) {}
+    }
 
-        <div class="flex gap-2 mb-3 flex-shrink-0">
-          <input type="text" id="cod-man" inputmode="numeric" placeholder="Digitar Cód..." class="flex-1 bg-white border border-slate-200 rounded-xl px-4 py-3 text-center font-bold text-slate-700 shadow-sm outline-none focus:border-slate-400">
-          <button id="btn-man" onclick="enviarManual()" class="px-6 rounded-xl font-black text-white shadow-sm transition-transform active:scale-95 flex items-center justify-center"><i class="ph-bold ph-arrow-right text-xl"></i></button>
-        </div>
+    function piscarTela(tipo) {
+      const body = document.getElementById('body-bg');
+      body.classList.remove('animate-flash-ok', 'animate-flash-erro');
+      void body.offsetWidth; 
+      if(tipo === 'ok') body.classList.add('animate-flash-ok');
+      else body.classList.add('animate-flash-erro');
+    }
 
-        <div id="ultimo-bip-container" class="mt-auto flex-shrink-0 pb-1 w-full">
-          <div class="text-center text-slate-400 text-sm font-medium py-2 flex flex-col items-center gap-1"><i class="ph-bold ph-barcode text-3xl opacity-50"></i> Posição da última leitura</div>
-        </div>
-      </section>
-
-      <section id="painel-lista" class="absolute inset-0 w-full h-full overflow-y-auto p-4 transition-transform duration-300 transform translate-x-full">
-        <div class="bg-white rounded-2xl shadow-sm border border-slate-200 p-4 mb-4">
-          <div onclick="toggleGaveta()" class="flex justify-between items-center cursor-pointer">
-            <div>
-              <p class="text-[10px] uppercase font-bold text-slate-400">Total Processado</p>
-              <p class="text-2xl font-black text-slate-800 leading-none mt-1" id="total-val">0</p>
-            </div>
-            <div class="bg-slate-50 p-2 rounded-lg text-slate-400 hover:text-slate-600 transition-colors"><i class="ph-bold ph-caret-down"></i></div>
-          </div>
-          
-          <div id="stats-drawer" class="hidden mt-4 pt-4 border-t border-slate-100">
-            <div class="grid grid-cols-3 gap-2 mb-4">
-               <div class="bg-slate-50 p-2 rounded-xl text-center border border-slate-100"><p class="text-[10px] font-bold text-slate-400 uppercase">Corte</p><p class="text-lg font-black text-slate-700" id="tot-corte">0</p></div>
-               <div class="bg-slate-50 p-2 rounded-xl text-center border border-slate-100"><p class="text-[10px] font-bold text-slate-400 uppercase">Embal</p><p class="text-lg font-black text-slate-700" id="tot-emb">0</p></div>
-               <div class="bg-slate-50 p-2 rounded-xl text-center border border-slate-100"><p class="text-[10px] font-bold text-slate-400 uppercase">Exped</p><p class="text-lg font-black text-slate-700" id="tot-ent">0</p></div>
-            </div>
-            <p class="text-[10px] font-bold text-slate-400 uppercase mb-2">Por Modalidade:</p>
-            <div id="lista-mods" class="text-sm"></div>
-          </div>
-        </div>
-
-        <div id="historico-lista" class="flex flex-col gap-3 pb-6">
-          <div class="text-center text-slate-400 text-sm font-medium py-10 flex flex-col items-center gap-2"><i class="ph-bold ph-ghost text-4xl opacity-50"></i> Memória vazia</div>
-        </div>
-      </section>
-    </main>
-
-    <script>
-      // =========================================================================
-      // COLOQUE SEU LINK DO GOOGLE AQUI !!!
-      // =========================================================================
-      const URL_API_GOOGLE = "https://script.google.com/macros/s/AKfycbyLm701Aoi5omM-MMYbcx9KA4swXG4b8Y4mxkkTv4O_WbN91L31WSkbL0NLldorkiNM1g/exec"; 
-
-      const urlParams = new URLSearchParams(window.location.search);
-      const setorApp = (urlParams.get('setor') || 'CORTE').toUpperCase();
-      
-      const config = {
-        'CORTE': { color: 'text-slate-700', bg: 'bg-slate-700', border: 'border-slate-700', icon: 'ph-scissors' },
-        'EMBALAGEM': { color: 'text-blue-600', bg: 'bg-blue-600', border: 'border-blue-600', icon: 'ph-package' },
-        'ENTREGA': { color: 'text-emerald-600', bg: 'bg-emerald-600', border: 'border-emerald-600', icon: 'ph-truck' }
-      };
-
-      const tema = config[setorApp] || config['CORTE'];
-
-      var totaisGerais = {"CORTE":0, "EMBALAGEM":0, "ENTREGA":0}, mods = {}, fila = [], proc = false, scanner = null;
-      var abaAtual = 0, codUltimoScan = "", timeUltimoScan = 0;
-      var timerRepouso = null;
-      const TEMPO_REPOUSO_MS = 120000;
-      
-      var inputOp = document.getElementById('operador');
-      inputOp.value = localStorage.getItem('opLona') || '';
-      inputOp.addEventListener('blur', () => { 
-        if(inputOp.value.trim() !== '') {
-          localStorage.setItem('opLona', inputOp.value); 
+    // ==============================================================================
+    // ATUALIZAÇÃO DO SERVIDOR (TOTAL PROCESSADO)
+    // ==============================================================================
+    async function buscarResumoServidor() {
+      const icon = document.getElementById('icone-sync');
+      icon.classList.add('animate-spin');
+      try {
+        const req = await fetch(URL_API_GOOGLE, { 
+          method: 'POST', 
+          body: JSON.stringify({ acao: "buscarResumo", etapa: setorApp }) 
+        });
+        const res = await req.json();
+        if(res.totais) {
+          totaisGerais = res.totais;
+          document.getElementById('total-processado').innerText = totaisGerais[setorApp] || 0;
         }
+      } catch (e) {
+        console.error("Erro ao buscar resumo");
+      }
+      icon.classList.remove('animate-spin');
+    }
+
+    // ==============================================================================
+    // PROCESSAMENTO DE DADOS E FILA
+    // ==============================================================================
+    function iniciarCamera() {
+      html5QrcodeScanner = new Html5Qrcode("reader");
+      const config = { fps: 15, qrbox: { width: 250, height: 250 }, aspectRatio: 1.0 };
+      
+      html5QrcodeScanner.start(
+        { facingMode: "environment" }, 
+        config, 
+        (decodedText) => { onScan(decodedText); }
+      ).catch(err => {
+        document.getElementById('reader').innerHTML = '<p class="text-white text-center mt-20 font-bold">Câmera Indisponível</p>';
       });
-      document.getElementById('cod-man').addEventListener("keyup", function(e) { if (e.key === "Enter") enviarManual(); });
+    }
 
-      function piscarTela(tipo) {
-        const over = document.getElementById('flash-overlay');
-        over.className = `absolute inset-0 z-[100] pointer-events-none transition-colors duration-300 ${tipo === 'ok' ? 'bg-emerald-500/40' : 'bg-red-500/40'}`;
-        setTimeout(() => { over.className = 'absolute inset-0 z-[100] pointer-events-none transition-colors duration-500 bg-transparent'; }, 400);
+    function onScan(codigo) {
+      bip(800, 0.1);
+      adicionarFila(codigo);
+    }
+
+    function adicionarManual(e) {
+      e.preventDefault();
+      let input = document.getElementById('input-manual');
+      let val = input.value.trim();
+      if(val !== '') {
+        adicionarFila(val);
+        input.value = '';
       }
+    }
 
-      window.onload = function() {
-        document.getElementById('titulo-app').innerText = setorApp;
-        document.getElementById('titulo-app').classList.add(tema.color);
-        document.getElementById('icone-setor').classList.add(tema.color, tema.icon);
-        document.getElementById('btn-man').classList.add(tema.bg);
-        document.getElementById('box-leitor').classList.replace('border-slate-800', tema.border);
+    function adicionarFila(codigoRaw) {
+      if(!inputOp.value.trim()) { alert("Digite o nome do Operador antes de bipar!"); return; }
+      
+      let id = Date.now().toString();
+      let c = codigoRaw; let lped = "";
+      if(c.includes("L.") || c.includes("L:")) {
+        lped = c.replace(/[^0-9]/g, ""); 
+        c = "";
+      }
+      
+      // Evita duplicidade local na fila
+      if(fila.some(x => (x.c === c && c !== "") || (x.lped === lped && lped !== ""))) return;
+      
+      fila.push({ id: id, c: c, lped: lped, status: 'load', s: 'Enviando...' });
+      renderTelas();
+      if(!proc) processar();
+    }
+
+    // ==============================================================================
+    // RENDERIZAÇÃO DOS CARTÕES (6 DÍGITOS E VARIÁVEIS EXATAS)
+    // ==============================================================================
+    function gerarHtmlCartao(i) {
+       let temaAtual = temas[setorApp];
+       let cardStyle = "bg-white border-slate-200 text-slate-800";
+       let icon = `<i class="ph-bold ph-spinner animate-spin text-slate-400 text-3xl"></i>`;
+       let modStyle = "bg-slate-100 text-slate-500";
+       let infoStyle = "bg-slate-100 text-slate-500";
+       
+       if(i.status === 'ok') {
+         cardStyle = `${temaAtual.bg} border-transparent text-white shadow-md`;
+         icon = `<i class="ph-fill ph-check-circle text-white text-4xl drop-shadow-sm"></i>`;
+         modStyle = "bg-white/20 text-white";
+         infoStyle = "bg-white text-slate-900";
+       } else if(i.status === 'erro') {
+         cardStyle = "bg-red-500 border-transparent text-white shadow-md animate-shake";
+         icon = `<i class="ph-fill ph-warning-circle text-white text-4xl drop-shadow-sm"></i>`;
+         modStyle = "bg-black/20 text-white";
+         infoStyle = "bg-white text-red-600";
+       }
+
+       // Exibe o código processado em pedHtml ou o padrão enquanto carrega
+       let exibicaoCodigo = i.pedHtml || `<span class="opacity-80">#...${(i.c || '').slice(-6)}</span>`;
+
+       return `
+       <div id="${i.id}" class="animate-slide-in p-4 rounded-2xl border flex items-center justify-between gap-2 transition-all duration-300 ${cardStyle}">
+         <div class="flex-1 overflow-hidden">
+           <div class="flex items-center gap-3 mb-2">
+             <span class="text-2xl font-black bg-slate-900 text-white px-3 py-1 rounded-lg shadow-sm whitespace-nowrap">L. ${i.lp || '?'}</span>
+             <span class="text-[11px] md:text-xs font-bold font-mono tracking-wider truncate">${exibicaoCodigo}</span>
+           </div>
+           <div class="flex items-center gap-2">
+             <span class="text-[11px] font-black uppercase px-2 py-1.5 rounded-md ${modStyle} truncate max-w-[60%]">${i.mod || '...'}</span>
+             <span class="text-[12px] font-black uppercase px-2 py-1.5 rounded-md ${infoStyle} shadow-sm whitespace-nowrap">QTD: ${i.qtd || '-'}</span>
+           </div>
+           ${i.status !== 'ok' && i.status !== 'load' ? `<p class="text-xs font-bold mt-2 opacity-90">${i.s}</p>` : ''}
+         </div>
+         <div class="flex-shrink-0">${icon}</div>
+       </div>`;
+    }
+
+    function renderTelas() {
+      document.getElementById('cont-lista').innerText = fila.length;
+      if(fila.length === 0) return;
+
+      document.getElementById('ultimo-bip-container').innerHTML = gerarHtmlCartao(fila[fila.length-1]);
+      
+      let h = ""; 
+      [...fila].reverse().forEach(i => { h += gerarHtmlCartao(i); });
+      document.getElementById('historico-lista').innerHTML = h;
+    }
+
+    async function processar() {
+      let i = fila.find(x => x.status === 'load' || x.status === 'pendente');
+      if(!i) { proc = false; return; }
+      proc = true;
+      
+      try {
+        const req = await fetch(URL_API_GOOGLE, { 
+          method: 'POST', 
+          body: JSON.stringify({ acao: "processarLogistica", codigo: i.c, lped: i.lped, operador: inputOp.value, etapa: setorApp }) 
+        });
+        const r = await req.json();
+        let idx = fila.findIndex(x => x.id === i.id);
         
-        atualizarAbaVisual(0);
-        
-        // AGORA INICIA A CÂMERA IMEDIATAMENTE, COM OU SEM NOME
-        iniciarSistema();
-        
-        document.addEventListener('touchstart', reiniciarTimerRepouso);
-        document.addEventListener('mousemove', reiniciarTimerRepouso);
-      };
-
-      function reiniciarTimerRepouso() {
-        if(timerRepouso) clearTimeout(timerRepouso);
-        timerRepouso = setTimeout(pausarCamera, TEMPO_REPOUSO_MS);
-      }
-
-      function pausarCamera() {
-        if (scanner && scanner.isScanning) {
-          scanner.stop().then(() => {
-            document.getElementById('overlay-pausa').classList.remove('hidden');
-            document.getElementById('overlay-pausa').classList.add('flex');
-          }).catch(e => console.log(e));
-        }
-      }
-
-      function acordarCamera() {
-        document.getElementById('overlay-pausa').classList.add('hidden');
-        document.getElementById('overlay-pausa').classList.remove('flex');
-        reiniciarTimerRepouso();
-        iniciarCameraFisica();
-      }
-
-      function iniciarSistema() {
-        buscarResumoServidor();
-        reiniciarTimerRepouso();
-        if(!scanner) setTimeout(iniciarCameraFisica, 500);
-      }
-
-      function iniciarCameraFisica() {
-        try {
-          if (!scanner) { scanner = new Html5Qrcode("reader"); }
-          document.getElementById('reader').innerHTML = '<div class="text-slate-400 p-4 absolute inset-0 flex items-center justify-center">Iniciando câmera...</div>';
-
-          scanner.start(
-            { facingMode: "environment" }, 
-            { fps: 15, qrbox: { width: 250, height: 250 } }, 
-            function(c) { adicionarAFila(c); }
-          ).catch(function(err) { 
-            document.getElementById('reader').innerHTML = `<div class="text-red-500 font-bold p-4 absolute inset-0 flex flex-col items-center justify-center text-center text-xs gap-2"><i class="ph-bold ph-warning text-2xl"></i> Câmera bloqueada.<br>Detalhe: ${err}</div>`;
-          });
-        } catch(err) { console.error(err); }
-      }
-
-      async function buscarResumoServidor() {
-        try {
-          const req = await fetch(URL_API_GOOGLE, { method: 'POST', body: JSON.stringify({ acao: "buscarResumo", etapa: setorApp }) });
-          const res = await req.json();
-          totaisGerais = res.totais; mods = res.mods; atualizarGaveta(); 
-        } catch (e) {}
-      }
-
-      function irParaAba(index) {
-        abaAtual = index;
-        atualizarAbaVisual(index);
-        document.getElementById('painel-camera').style.transform = index === 0 ? "translateX(0)" : "translateX(-100%)";
-        document.getElementById('painel-lista').style.transform = index === 0 ? "translateX(100%)" : "translateX(0)";
-      }
-
-      function atualizarAbaVisual(index) {
-        const btn0 = document.getElementById('tab0');
-        const btn1 = document.getElementById('tab1');
-        
-        btn0.className = index === 0 ? `flex-1 py-2 text-sm font-bold rounded-lg shadow-sm transition-all text-white flex items-center justify-center gap-2 ${tema.bg}` : `flex-1 py-2 text-sm font-bold rounded-lg transition-all text-slate-500 bg-transparent flex items-center justify-center gap-2`;
-        btn1.className = index === 1 ? `flex-1 py-2 text-sm font-bold rounded-lg shadow-sm transition-all text-white flex items-center justify-center gap-2 ${tema.bg}` : `flex-1 py-2 text-sm font-bold rounded-lg transition-all text-slate-500 bg-transparent flex items-center justify-center gap-2`;
-      }
-
-      function toggleGaveta() { 
-        const d = document.getElementById('stats-drawer'); 
-        d.classList.toggle('hidden'); 
-      }
-
-      function atualizarGaveta() {
-        document.getElementById('total-val').innerText = totaisGerais[setorApp] || 0;
-        document.getElementById('tot-corte').innerText = totaisGerais["CORTE"] || 0;
-        document.getElementById('tot-emb').innerText = totaisGerais["EMBALAGEM"] || 0;
-        document.getElementById('tot-ent').innerText = totaisGerais["ENTREGA"] || 0;
-        let h = ""; 
-        for(let k in mods) h += `<div class='flex justify-between py-2 border-b border-slate-50 last:border-0'><span class="font-medium text-slate-600">${k}</span><b class="text-slate-800">${mods[k]}</b></div>`;
-        document.getElementById('lista-mods').innerHTML = h || "<div class='text-center text-slate-400 py-2'>Nenhum pedido hoje.</div>";
-      }
-
-      function enviarManual() { 
-        let v = document.getElementById('cod-man').value; 
-        if(v) { 
-           adicionarAFila(v); 
-           document.getElementById('cod-man').value=""; 
-        } 
-      }
-
-      function adicionarAFila(codigo) {
-        reiniciarTimerRepouso();
-        let agora = Date.now();
-        let codString = String(codigo).trim();
-
-        // Evita bipar o mesmo código sem querer
-        if(codString === codUltimoScan && (agora - timeUltimoScan) < 4000) return;
-        codUltimoScan = codString; timeUltimoScan = agora;
-
-        // Extrai as informações da etiqueta
-        let lpedEncontrado = "";
-        let idEncontrado = codString;
-        let matchL = codString.match(/L\.?\s*ped\s*(\d+)/i) || codString.match(/L\.?\s*(\d+)/i);
-        if (matchL) { lpedEncontrado = matchL[1]; }
-
-        let numeros = codString.match(/\d+/g); 
-        if (numeros && numeros.length > 0) {
-            let numsSemLped = numeros.filter(n => n !== lpedEncontrado);
-            if (numsSemLped.length > 0) {
-                idEncontrado = numsSemLped.reduce((a, b) => a.length > b.length ? a : b);
-            } else {
-                idEncontrado = numeros[numeros.length-1];
-            }
-        }
-        let codCurto = idEncontrado.length > 6 ? idEncontrado.slice(-6) : idEncontrado;
-
-        // VERIFICA SE O OPERADOR COLOCOU O NOME
-        if(inputOp.value.trim() === "") {
-            bip(200, 0.4);
-            piscarTela('erro');
-            let itemErro = { id: Date.now(), c: idEncontrado, lped: lpedEncontrado, s: "⚠️ Digite seu nome acima primeiro!", lp: lpedEncontrado || "?", ped: codCurto, mod: "BLOQUEADO", qtd: "-", status: 'erro' };
-            fila.push(itemErro);
-            renderTelas();
-            // Puxa o foco para o campo do nome pro teclado já abrir
-            document.getElementById('operador').focus();
-            return;
-        }
-
-        bip(800, 0.1);
-        let item = { id: Date.now(), c: idEncontrado, lped: lpedEncontrado, s: "BUSCANDO...", lp: lpedEncontrado || "?", ped: codCurto, mod: "...", qtd: "-", status: 'load' };
-        fila.push(item); 
-
-        renderTelas();
-        if(!proc) processar();
-      }
-
-      function renderTelas() {
-        document.getElementById('cont-lista').innerText = fila.length;
-        if(fila.length === 0) return;
-
-        function gerarHtmlCartao(i) {
-           let cardStyle = "bg-white border-slate-200 text-slate-800";
-           let icon = `<i class="ph-bold ph-spinner animate-spin text-slate-400 text-3xl"></i>`;
-           let modStyle = "bg-slate-100 text-slate-500";
-           let infoStyle = "bg-slate-100 text-slate-500";
-           
-           if(i.status === 'ok') {
-             cardStyle = `${tema.bg} border-transparent text-white shadow-md`;
-             icon = `<i class="ph-fill ph-check-circle text-white text-4xl drop-shadow-sm"></i>`;
-             modStyle = "bg-white/20 text-white";
-             infoStyle = "bg-white text-slate-900";
-           } else if(i.status === 'erro') {
-             cardStyle = "bg-red-500 border-transparent text-white shadow-md animate-shake";
-             icon = `<i class="ph-fill ph-warning-circle text-white text-4xl drop-shadow-sm"></i>`;
-             modStyle = "bg-black/20 text-white";
-             infoStyle = "bg-white text-red-600";
-           }
-
-           // Usa a nova variável de HTML do Código se estiver OK, ou exibe o padrão encurtado enquanto carrega
-           let exibicaoCodigo = i.pedHtml || `<span class="opacity-80">#...${i.ped || ''}</span>`;
-
-           return `
-           <div id="${i.id}" class="animate-slide-in p-4 rounded-2xl border flex items-center justify-between gap-2 transition-all duration-300 ${cardStyle}">
-             <div class="flex-1 overflow-hidden">
-               <div class="flex items-center gap-3 mb-2">
-                 <span class="text-2xl font-black bg-slate-900 text-white px-3 py-1 rounded-lg shadow-sm whitespace-nowrap">L. ${i.lp || '?'}</span>
-                 <span class="text-[11px] md:text-xs font-bold font-mono tracking-wider truncate">${exibicaoCodigo}</span>
-               </div>
-               <div class="flex items-center gap-2">
-                 <span class="text-[11px] font-black uppercase px-2 py-1.5 rounded-md ${modStyle} truncate max-w-[60%]">${i.mod || '...'}</span>
-                 <span class="text-[12px] font-black uppercase px-2 py-1.5 rounded-md ${infoStyle} shadow-sm whitespace-nowrap">QTD: ${i.qtd || '-'}</span>
-               </div>
-               ${i.status !== 'ok' && i.status !== 'load' ? `<p class="text-xs font-bold mt-2 opacity-90">${i.s}</p>` : ''}
-             </div>
-             <div class="flex-shrink-0">${icon}</div>
-           </div>`;
-        }
-
-        document.getElementById('ultimo-bip-container').innerHTML = gerarHtmlCartao(fila[fila.length-1]);
-        let h = ""; [...fila].reverse().forEach(i => { h += gerarHtmlCartao(i); });
-        document.getElementById('historico-lista').innerHTML = h;
-      }
-
-      async function processar() {
-        let i = fila.find(x => x.status === 'load' || x.status === 'pendente');
-        if(!i) { proc = false; return; }
-        proc = true;
-        
-        try {
-          const req = await fetch(URL_API_GOOGLE, { method: 'POST', body: JSON.stringify({ acao: "processarLogistica", codigo: i.c, lped: i.lped, operador: inputOp.value, etapa: setorApp }) });
-          const r = await req.json();
-          let idx = fila.findIndex(x => x.id === i.id);
+        if(r.sucesso) {
+          bip(1500, 0.2); 
+          piscarTela('ok');
+          fila[idx].status = 'ok'; 
+          fila[idx].s = "OK"; 
           
-          if(r.sucesso) {
-            bip(1500, 0.2); 
-            piscarTela('ok');
-            fila[idx].status = 'ok'; 
-            fila[idx].s = "OK"; 
-            fila[idx].lp = r.lped || '?'; 
-            fila[idx].mod = r.mod || 'SEM MODALIDADE'; 
-            fila[idx].qtd = r.qtd || '-';
-            
-            // CÓDIGO COMPLETO COM ÚLTIMOS 3 DÍGITOS DESTACADOS
-            let codString = String(r.cod || '');
-            if(codString.length > 3) {
-               let base = codString.slice(0, -3);
-               let fim = codString.slice(-3);
-               fila[idx].pedHtml = `<span class="opacity-75">${base}</span><b class="text-[14px] text-amber-300 ml-[1px]">${fim}</b>`;
-            } else {
-               fila[idx].pedHtml = codString;
-            }
-            
-            totaisGerais[setorApp]++;
-            let nomeMod = (r.mod || "Outros").replace(" (Pronto)", ""); 
-            mods[nomeMod] = (mods[nomeMod] || 0) + 1; 
-            atualizarGaveta();
-          } else { 
-            bip(200, 0.4); 
-            piscarTela('erro');
-            fila[idx].status = 'erro'; fila[idx].s = r.erro; 
+          // Preenche as variáveis exatas que o servidor devolveu
+          fila[idx].lp = r.lped || '?'; 
+          fila[idx].mod = r.mod || 'SEM MODALIDADE'; 
+          fila[idx].qtd = r.qtd || '-';
+          
+          // LÓGICA DE CÓDIGO COM OS ÚLTIMOS 6 DÍGITOS DESTACADOS
+          let codString = String(r.cod || '');
+          if(codString.length > 6) {
+             let base = codString.slice(0, -6);
+             let fim = codString.slice(-6);
+             fila[idx].pedHtml = `<span class="opacity-75">${base}</span><b class="text-[14px] text-amber-300 ml-[1px]">${fim}</b>`;
+          } else {
+             fila[idx].pedHtml = codString;
           }
-        } catch (err) {
-          let idx = fila.findIndex(x => x.id === i.id);
-          fila[idx].status = 'pendente'; 
-          fila[idx].s = "⚠️ Sem resposta do servidor.";
-          renderTelas();
-          setTimeout(() => { processar(); }, 5000);
-          return; 
+          
+          // Força a recontagem oficial e à prova de falhas direto do servidor
+          buscarResumoServidor();
+        } else { 
+          bip(200, 0.4); 
+          piscarTela('erro');
+          fila[idx].status = 'erro'; 
+          fila[idx].s = r.erro; 
         }
-
-        renderTelas(); 
-        processar();
+      } catch (err) {
+        let idx = fila.findIndex(x => x.id === i.id);
+        fila[idx].status = 'pendente'; 
+        fila[idx].s = "⚠️ Servidor lento. Retentando...";
+        renderTelas();
+        setTimeout(() => { processar(); }, 4000);
+        return; 
       }
 
-      function bip(f, d) {
-        try {
-            if (navigator.vibrate) navigator.vibrate(50);
-            var actx = window.AudioContext || window.webkitAudioContext;
-            if (actx) {
-                var c = new actx(); var o = c.createOscillator(); var g = c.createGain();
-                o.connect(g); g.connect(c.destination); 
-                o.frequency.value = f; g.gain.value = 0.1;
-                o.start(); o.stop(c.currentTime + d);
-            }
-        } catch(e) {}
-      }
-    </script>
-  </body>
+      renderTelas(); 
+      processar();
+    }
+  </script>
+</body>
 </html>
