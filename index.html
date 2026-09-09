@@ -210,20 +210,15 @@
         codUltimoScan = codString; timeUltimoScan = agora;
         bip(1000, 0.1);
 
+        // EXTRATOR BLINDADO: Puxa todos os números do QR Code e escolhe o maior bloco
         let idEncontrado = codString;
-
-        // Se o QR Code tiver formato "L.ped 1 - 20000123"
-        if (codString.includes('-')) {
-            let partes = codString.split('-');
-            idEncontrado = partes[partes.length - 1].trim(); // Pega tudo que vier depois do traço
-        } 
-        // Se usar formato de barra vertical "|"
-        else if (codString.includes('|')) {
-            idEncontrado = codString.split('|')[0].trim(); // Pega a parte antes da barra
-        }
+        let numeros = codString.match(/\d+/g); 
         
-        // Limpeza de segurança
-        idEncontrado = idEncontrado.replace(/Ped:/ig, "").trim();
+        if (numeros && numeros.length > 0) {
+            // Se o QR for "L.ped 1 ( 751269 )", ele pega o 751269.
+            // Se for "1 - 2000014929751269", ele pega o 2000014929751269.
+            idEncontrado = numeros.reduce((a, b) => a.length > b.length ? a : b);
+        }
 
         let codCurto = idEncontrado.length > 4 ? idEncontrado.slice(-4) : idEncontrado;
         
@@ -233,7 +228,6 @@
         renderTelas();
         if(!proc) processar();
       }
-
       function renderTelas() {
         document.getElementById('cont-lista').innerText = fila.length;
         if(fila.length === 0) return;
