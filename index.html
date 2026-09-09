@@ -172,12 +172,36 @@
         document.getElementById('lista-mods').innerHTML = h || "<div class='text-center text-slate-400 py-2'>Nenhum pedido hoje.</div>";
       }
 
-      function ligar() {
+     function ligar() {
         try {
-          if (!scanner) { scanner = new Html5Qrcode("reader"); }
-          document.getElementById('reader').innerHTML = ''; // Limpa mensagem de espera
-          scanner.start({ facingMode: "environment" }, { fps: 15, qrbox: 250 }, function(c) { adicionarAFila(c); }).catch(function(err) {});
-        } catch(err) {}
+          if (!scanner) { 
+            scanner = new Html5Qrcode("reader"); 
+          }
+          document.getElementById('reader').innerHTML = '<div class="text-slate-400 p-4">Iniciando câmera...</div>';
+          
+          // Configuração otimizada: Baixa resolução força a câmera a abrir instantaneamente e focar mais rápido
+          const cameraConfig = { 
+            fps: 10, 
+            qrbox: { width: 250, height: 250 },
+            aspectRatio: 1.0,
+            videoConstraints: {
+              facingMode: "environment",
+              width: { ideal: 640 },
+              height: { ideal: 640 }
+            }
+          };
+
+          scanner.start(
+            { facingMode: "environment" }, 
+            cameraConfig, 
+            function(c) { adicionarAFila(c); }
+          ).catch(function(err) { 
+            console.error("Erro de câmera:", err);
+            document.getElementById('reader').innerHTML = '<div class="text-red-500 font-bold p-4">Erro ao abrir câmera. Verifique as permissões do navegador e recarregue.</div>';
+          });
+        } catch(err) {
+            console.error(err);
+        }
       }
 
       function enviarManual() { 
