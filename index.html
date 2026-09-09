@@ -13,7 +13,6 @@
       
       body { -webkit-tap-highlight-color: transparent; }
       
-      /* Câmera flexível: encolhe se faltar espaço, não corta a tela */
       #box-leitor { position: relative; display: flex; justify-content: center; align-items: center; width: 100%; min-height: 200px; }
       #reader { width: 100%; height: 100%; border-radius: 0.75rem; overflow: hidden; position: absolute; inset: 0; background: #000; }
       #reader video, #reader canvas { width: 100% !important; height: 100% !important; object-fit: cover !important; position: absolute !important; top: 0 !important; left: 0 !important; border-radius: 0.75rem !important;}
@@ -22,7 +21,7 @@
   </head>
   <body class="bg-slate-50 text-slate-800 h-screen flex flex-col overflow-hidden font-sans selection:bg-teal-200 relative">
     
-    <!-- PELÍCULA DE FLASH (Impossível de falhar) -->
+    <!-- PELÍCULA DE FLASH -->
     <div id="flash-overlay" class="absolute inset-0 z-[100] pointer-events-none bg-transparent transition-colors duration-300"></div>
 
     <header class="bg-white px-4 py-3 shadow-sm z-50 flex items-center justify-between border-b border-slate-100 flex-shrink-0">
@@ -57,7 +56,8 @@
             <span class="font-black text-lg">Câmera em Repouso</span>
             <span class="text-sm text-slate-400 font-bold mt-1">Toque para reativar</span>
           </div>
-          <div id="reader" class="flex items-center justify-center text-slate-400 font-medium text-sm text-center">Aguardando operador...</div>
+          <!-- Texto inicial alterado para Iniciando câmera -->
+          <div id="reader" class="flex items-center justify-center text-slate-400 font-medium text-sm text-center">Iniciando câmera...</div>
         </div>
 
         <div class="flex gap-2 mb-3 flex-shrink-0">
@@ -98,9 +98,8 @@
     </main>
 
     <script>
-     <script>
       // =========================================================================
-      // COLOQUE AQUI O ***NOVO*** LINK QUE O GOOGLE GEROU NO PASSO 1 !!!
+      // COLOQUE SEU LINK DO GOOGLE AQUI !!!
       // =========================================================================
       const URL_API_GOOGLE = "https://script.google.com/macros/s/AKfycbzQRvoP6cV4WPLb6CAJ6sSpT6hhdOZ7VrWH-L_BP3ae5Y4Tk4coNo3lzNQXC_o7iJrflQ/exec"; 
 
@@ -125,7 +124,6 @@
       inputOp.addEventListener('blur', () => { 
         if(inputOp.value.trim() !== '') {
           localStorage.setItem('opLona', inputOp.value); 
-          iniciarSistema(); 
         }
       });
       document.getElementById('cod-man').addEventListener("keyup", function(e) { if (e.key === "Enter") enviarManual(); });
@@ -144,8 +142,9 @@
         document.getElementById('box-leitor').classList.replace('border-slate-800', tema.border);
         
         atualizarAbaVisual(0);
-
-        if(inputOp.value !== "") iniciarSistema();
+        
+        // AGORA INICIA A CÂMERA IMEDIATAMENTE, COM OU SEM NOME
+        iniciarSistema();
         
         document.addEventListener('touchstart', reiniciarTimerRepouso);
         document.addEventListener('mousemove', reiniciarTimerRepouso);
@@ -232,30 +231,27 @@
       }
 
       function enviarManual() { 
-        if(inputOp.value === "") { alert("Digite seu nome!"); inputOp.focus(); return; }
         let v = document.getElementById('cod-man').value; 
-        if(v) { adicionarAFila(v); document.getElementById('cod-man').value=""; } 
+        if(v) { 
+           adicionarAFila(v); 
+           document.getElementById('cod-man').value=""; 
+        } 
       }
 
       function adicionarAFila(codigo) {
-        if(inputOp.value === "") { alert("Digite seu nome primeiro!"); inputOp.focus(); return; }
         reiniciarTimerRepouso();
-        
         let agora = Date.now();
         let codString = String(codigo).trim();
 
+        // Evita bipar o mesmo código sem querer
         if(codString === codUltimoScan && (agora - timeUltimoScan) < 4000) return;
         codUltimoScan = codString; timeUltimoScan = agora;
-        bip(800, 0.1);
 
+        // Extrai as informações da etiqueta
         let lpedEncontrado = "";
         let idEncontrado = codString;
-        
-        // NOVIDADE: Acha o "L.ped 12" direto da etiqueta na mesma hora!
         let matchL = codString.match(/L\.?\s*ped\s*(\d+)/i) || codString.match(/L\.?\s*(\d+)/i);
-        if (matchL) {
-            lpedEncontrado = matchL[1];
-        }
+        if (matchL) { lpedEncontrado = matchL[1]; }
 
         let numeros = codString.match(/\d+/g); 
         if (numeros && numeros.length > 0) {
@@ -266,10 +262,21 @@
                 idEncontrado = numeros[numeros.length-1];
             }
         }
-
         let codCurto = idEncontrado.length > 6 ? idEncontrado.slice(-6) : idEncontrado;
-        
-        // Ele já monta a caixinha bonitinha com a Linha antes mesmo do servidor responder
+
+        // VERIFICA SE O OPERADOR COLOCOU O NOME
+        if(inputOp.value.trim() === "") {
+            bip(200, 0.4);
+            piscarTela('erro');
+            let itemErro = { id: Date.now(), c: idEncontrado, lped: lpedEncontrado, s: "⚠️ Digite seu nome acima primeiro!", lp: lpedEncontrado || "?", ped: codCurto, mod: "BLOQUEADO", qtd: "-", status: 'erro' };
+            fila.push(itemErro);
+            renderTelas();
+            // Puxa o foco para o campo do nome pro teclado já abrir
+            document.getElementById('operador').focus();
+            return;
+        }
+
+        bip(800, 0.1);
         let item = { id: Date.now(), c: idEncontrado, lped: lpedEncontrado, s: "BUSCANDO...", lp: lpedEncontrado || "?", ped: codCurto, mod: "...", qtd: "-", status: 'load' };
         fila.push(item); 
 
@@ -332,7 +339,6 @@
         proc = true;
         
         try {
-          // ELE MANDA O L.PED PRO GOOGLE APPS SCRIPT PARA ACELERAR A BUSCA
           const req = await fetch(URL_API_GOOGLE, { method: 'POST', body: JSON.stringify({ acao: "processarLogistica", codigo: i.c, lped: i.lped, operador: inputOp.value, etapa: setorApp }) });
           const r = await req.json();
           let idx = fila.findIndex(x => x.id === i.id);
@@ -381,3 +387,5 @@
         } catch(e) {}
       }
     </script>
+  </body>
+</html>
