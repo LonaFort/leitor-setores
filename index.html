@@ -28,7 +28,7 @@
       <span class="text-xl font-black text-emerald-700 tracking-tighter">LONA<span class="text-amber-500">FORT</span></span>
     </div>
     <div class="bg-slate-100 border border-slate-200 text-slate-700 text-sm font-bold rounded-lg px-3 py-1.5" id="header-setor">
-      CORTE
+      CARREGANDO...
     </div>
   </header>
 
@@ -84,11 +84,12 @@
   </main>
 
   <script>
-    // URL FIXA DO SEU APP
-    const URL_API_GOOGLE = "https://script.google.com/macros/s/AKfycbys5q23I-1Sij1Za-Vo9ffOg7ixdazafM3Hip5JLrCzqcCeN7oxptHyA5fAflvJtN5LVw/exec";
+    // URL ATUALIZADA DO SEU WEB APP GOOGLE
+    const URL_API_GOOGLE = "https://script.google.com/macros/s/AKfycbxOq6PhMsaVq_BJHwucpD_8EuL1GlZMl_amsdkvqCC7PI3LB7v7N7GrAB0Kh5jpK_HXkg/exec";
     
-    // MUDE AQUI PARA CADA CELULAR (CORTE, EMBALAGEM, ENTREGA)
-    const setorApp = "CORTE"; 
+    // PEGA O SETOR AUTOMATICAMENTE DA URL (?setor=CORTE, ?setor=EMBALAGEM, etc). SE NÃO PASSAR NADA, PADRÃO É CORTE.
+    const urlParams = new URLSearchParams(window.location.search);
+    const setorApp = urlParams.get('setor') ? urlParams.get('setor').toUpperCase() : "CORTE"; 
 
     let html5QrcodeScanner = null;
     let fila = [];
@@ -209,7 +210,7 @@
     }
 
     function gerarHtmlCartao(i) {
-       let temaAtual = temas[setorApp];
+       let temaAtual = temas[setorApp] || temas["CORTE"];
        let cardStyle = "bg-white border-slate-200 text-slate-800";
        let icon = `<i class="ph-bold ph-spinner animate-spin text-slate-400 text-3xl"></i>`;
        let modStyle = "bg-slate-100 text-slate-500";
