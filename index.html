@@ -12,40 +12,33 @@
     @keyframes flash-erro { 0% { background-color: #ef4444; } 100% { background-color: transparent; } }
     @keyframes shake { 0%, 100% { transform: translateX(0); } 25% { transform: translateX(-5px); } 75% { transform: translateX(5px); } }
     @keyframes slideIn { from { opacity: 0; transform: translateY(-10px); } to { opacity: 1; transform: translateY(0); } }
-    
     .animate-flash-ok { animation: flash-ok 0.4s ease-out; }
     .animate-flash-erro { animation: flash-erro 0.4s ease-out; }
     .animate-shake { animation: shake 0.3s ease-in-out; }
     .animate-slide-in { animation: slideIn 0.3s ease-out forwards; }
-    
-    /* Câmera flexível */
     #reader { width: 100%; border-radius: 0.75rem; overflow: hidden; border: none !important; }
     #reader video { object-fit: cover; }
   </style>
 </head>
 <body class="bg-slate-50 text-slate-800 h-screen flex flex-col font-sans overflow-hidden transition-colors duration-300" id="body-bg">
 
-  <!-- CABEÇALHO -->
+  <!-- CABEÇALHO LIMPO -->
   <header class="bg-white px-4 py-3 shadow-sm z-10 flex items-center justify-between shrink-0">
     <div class="flex items-center gap-2">
-      <img src="https://geomembrana.com.br/wp-content/uploads/2023/12/LonaFort_Logo_2-300x70.png" alt="LonaFort" class="h-6">
+      <span class="text-xl font-black text-emerald-700 tracking-tighter">LONA<span class="text-amber-500">FORT</span></span>
     </div>
-    <select id="setor" class="bg-slate-100 border border-slate-200 text-slate-700 text-sm font-bold rounded-lg px-3 py-1.5 focus:outline-none focus:ring-2 focus:ring-blue-500" onchange="mudarSetor()">
-      <option value="CORTE">✂️ CORTE</option>
-      <option value="EMBALAGEM">📦 EMBALAGEM</option>
-      <option value="ENTREGA">🚚 ENTREGA</option>
-    </select>
+    <div class="bg-slate-100 border border-slate-200 text-slate-700 text-sm font-bold rounded-lg px-3 py-1.5" id="header-setor">
+      CORTE
+    </div>
   </header>
 
   <!-- OPERADOR -->
   <div class="px-4 py-2 bg-slate-100 border-b border-slate-200 shrink-0 flex items-center gap-2">
     <i class="ph ph-user text-slate-400 text-lg"></i>
-    <input type="text" id="operador" placeholder="Nome do Operador" class="bg-transparent border-none focus:ring-0 text-sm font-semibold w-full text-slate-700 placeholder-slate-400 outline-none uppercase">
+    <input type="text" id="operador" placeholder="NOME DO OPERADOR" class="bg-transparent border-none focus:ring-0 text-sm font-semibold w-full text-slate-700 placeholder-slate-400 outline-none uppercase">
   </div>
 
-  <!-- CONTEÚDO PRINCIPAL (Scrollável) -->
   <main class="flex-1 overflow-y-auto p-4 flex flex-col gap-4">
-    
     <!-- GAVETA DE TOTAL PROCESSADO -->
     <div class="bg-white border border-slate-200 rounded-2xl p-4 shadow-sm flex items-center justify-between">
       <div>
@@ -57,7 +50,7 @@
       </button>
     </div>
 
-    <!-- TABS: CÂMERA E FILA -->
+    <!-- TABS -->
     <div class="flex rounded-xl bg-slate-200 p-1 shrink-0">
       <button onclick="alternarAba('camera')" id="btn-tab-camera" class="flex-1 py-2 rounded-lg text-sm font-bold bg-white shadow text-slate-800 transition-all flex items-center justify-center gap-2">
         <i class="ph ph-camera text-lg"></i> Câmera
@@ -75,32 +68,31 @@
       </div>
       
       <form onsubmit="adicionarManual(event)" class="flex gap-2">
-        <input type="text" id="input-manual" placeholder="Digitar código..." class="flex-1 bg-white border border-slate-200 rounded-xl px-4 py-3 text-sm font-bold focus:outline-none focus:border-slate-400 focus:ring-1 focus:ring-slate-400 shadow-sm" autocomplete="off">
+        <input type="text" id="input-manual" placeholder="Digitar código..." class="flex-1 bg-white border border-slate-200 rounded-xl px-4 py-3 text-sm font-bold focus:outline-none focus:border-slate-400 shadow-sm" autocomplete="off">
         <button type="submit" class="bg-slate-800 text-white px-5 rounded-xl font-bold active:scale-95 transition-transform shadow-sm">
           <i class="ph ph-arrow-right text-lg"></i>
         </button>
       </form>
 
-      <!-- ÚLTIMO BIP (Destaque) -->
       <div id="ultimo-bip-container"></div>
     </div>
 
-    <!-- ABA FILA (Histórico) -->
+    <!-- ABA FILA -->
     <div id="aba-fila" class="hidden flex-col gap-2 pb-10">
       <div id="historico-lista" class="flex flex-col gap-2"></div>
     </div>
   </main>
 
   <script>
-    // ==============================================================================
-    // CONFIGURAÇÕES PRINCIPAIS
-    // ==============================================================================
+    // URL FIXA DO SEU APP
     const URL_API_GOOGLE = "https://script.google.com/macros/s/AKfycbyLm701Aoi5omM-MMYbcx9KA4swXG4b8Y4mxkkTv4O_WbN91L31WSkbL0NLldorkiNM1g/exec";
     
+    // MUDE AQUI PARA CADA CELULAR (CORTE, EMBALAGEM, ENTREGA)
+    const setorApp = "CORTE"; 
+
     let html5QrcodeScanner = null;
     let fila = [];
     let proc = false;
-    let setorApp = "CORTE";
     let inputOp = document.getElementById('operador');
     let totaisGerais = { "CORTE": 0, "EMBALAGEM": 0, "ENTREGA": 0 };
 
@@ -110,32 +102,15 @@
       "ENTREGA": { bg: "bg-emerald-600" }
     };
 
-    // ==============================================================================
-    // INICIALIZAÇÃO
-    // ==============================================================================
     window.onload = () => {
+      document.getElementById('header-setor').innerText = setorApp;
       let opSalvo = localStorage.getItem('opLonaFort');
       if(opSalvo) inputOp.value = opSalvo;
-      
-      let setorSalvo = localStorage.getItem('setorLonaFort');
-      if(setorSalvo) {
-        document.getElementById('setor').value = setorSalvo;
-        setorApp = setorSalvo;
-      }
-      
       inputOp.addEventListener('change', () => localStorage.setItem('opLonaFort', inputOp.value.trim()));
       
       iniciarCamera();
       buscarResumoServidor();
     };
-
-    function mudarSetor() {
-      setorApp = document.getElementById('setor').value;
-      localStorage.setItem('setorLonaFort', setorApp);
-      fila = [];
-      renderTelas();
-      buscarResumoServidor();
-    }
 
     function alternarAba(aba) {
       if(aba === 'camera') {
@@ -157,9 +132,6 @@
       }
     }
 
-    // ==============================================================================
-    // LÓGICA DE SENSOR (AUDIO E VISUAL)
-    // ==============================================================================
     const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
     function bip(freq, vol) {
       try {
@@ -185,9 +157,6 @@
       else body.classList.add('animate-flash-erro');
     }
 
-    // ==============================================================================
-    // ATUALIZAÇÃO DO SERVIDOR (TOTAL PROCESSADO)
-    // ==============================================================================
     async function buscarResumoServidor() {
       const icon = document.getElementById('icone-sync');
       icon.classList.add('animate-spin');
@@ -201,24 +170,14 @@
           totaisGerais = res.totais;
           document.getElementById('total-processado').innerText = totaisGerais[setorApp] || 0;
         }
-      } catch (e) {
-        console.error("Erro ao buscar resumo");
-      }
+      } catch (e) {}
       icon.classList.remove('animate-spin');
     }
 
-    // ==============================================================================
-    // PROCESSAMENTO DE DADOS E FILA
-    // ==============================================================================
     function iniciarCamera() {
       html5QrcodeScanner = new Html5Qrcode("reader");
       const config = { fps: 15, qrbox: { width: 250, height: 250 }, aspectRatio: 1.0 };
-      
-      html5QrcodeScanner.start(
-        { facingMode: "environment" }, 
-        config, 
-        (decodedText) => { onScan(decodedText); }
-      ).catch(err => {
+      html5QrcodeScanner.start({ facingMode: "environment" }, config, (decodedText) => { onScan(decodedText); }).catch(err => {
         document.getElementById('reader').innerHTML = '<p class="text-white text-center mt-20 font-bold">Câmera Indisponível</p>';
       });
     }
@@ -232,23 +191,16 @@
       e.preventDefault();
       let input = document.getElementById('input-manual');
       let val = input.value.trim();
-      if(val !== '') {
-        adicionarFila(val);
-        input.value = '';
-      }
+      if(val !== '') { adicionarFila(val); input.value = ''; }
     }
 
     function adicionarFila(codigoRaw) {
       if(!inputOp.value.trim()) { alert("Digite o nome do Operador antes de bipar!"); return; }
-      
       let id = Date.now().toString();
       let c = codigoRaw; let lped = "";
       if(c.includes("L.") || c.includes("L:")) {
-        lped = c.replace(/[^0-9]/g, ""); 
-        c = "";
+        lped = c.replace(/[^0-9]/g, ""); c = "";
       }
-      
-      // Evita duplicidade local na fila
       if(fila.some(x => (x.c === c && c !== "") || (x.lped === lped && lped !== ""))) return;
       
       fila.push({ id: id, c: c, lped: lped, status: 'load', s: 'Enviando...' });
@@ -256,9 +208,6 @@
       if(!proc) processar();
     }
 
-    // ==============================================================================
-    // RENDERIZAÇÃO DOS CARTÕES (6 DÍGITOS E VARIÁVEIS EXATAS)
-    // ==============================================================================
     function gerarHtmlCartao(i) {
        let temaAtual = temas[setorApp];
        let cardStyle = "bg-white border-slate-200 text-slate-800";
@@ -278,7 +227,6 @@
          infoStyle = "bg-white text-red-600";
        }
 
-       // Exibe o código processado em pedHtml ou o padrão enquanto carrega
        let exibicaoCodigo = i.pedHtml || `<span class="opacity-80">#...${(i.c || '').slice(-6)}</span>`;
 
        return `
@@ -301,11 +249,8 @@
     function renderTelas() {
       document.getElementById('cont-lista').innerText = fila.length;
       if(fila.length === 0) return;
-
       document.getElementById('ultimo-bip-container').innerHTML = gerarHtmlCartao(fila[fila.length-1]);
-      
-      let h = ""; 
-      [...fila].reverse().forEach(i => { h += gerarHtmlCartao(i); });
+      let h = ""; [...fila].reverse().forEach(i => { h += gerarHtmlCartao(i); });
       document.getElementById('historico-lista').innerHTML = h;
     }
 
@@ -323,17 +268,12 @@
         let idx = fila.findIndex(x => x.id === i.id);
         
         if(r.sucesso) {
-          bip(1500, 0.2); 
-          piscarTela('ok');
-          fila[idx].status = 'ok'; 
-          fila[idx].s = "OK"; 
-          
-          // Preenche as variáveis exatas que o servidor devolveu
+          bip(1500, 0.2); piscarTela('ok');
+          fila[idx].status = 'ok'; fila[idx].s = "OK"; 
           fila[idx].lp = r.lped || '?'; 
           fila[idx].mod = r.mod || 'SEM MODALIDADE'; 
           fila[idx].qtd = r.qtd || '-';
           
-          // LÓGICA DE CÓDIGO COM OS ÚLTIMOS 6 DÍGITOS DESTACADOS
           let codString = String(r.cod || '');
           if(codString.length > 6) {
              let base = codString.slice(0, -6);
@@ -342,26 +282,19 @@
           } else {
              fila[idx].pedHtml = codString;
           }
-          
-          // Força a recontagem oficial e à prova de falhas direto do servidor
           buscarResumoServidor();
         } else { 
-          bip(200, 0.4); 
-          piscarTela('erro');
-          fila[idx].status = 'erro'; 
-          fila[idx].s = r.erro; 
+          bip(200, 0.4); piscarTela('erro');
+          fila[idx].status = 'erro'; fila[idx].s = r.erro; 
         }
       } catch (err) {
         let idx = fila.findIndex(x => x.id === i.id);
-        fila[idx].status = 'pendente'; 
-        fila[idx].s = "⚠️ Servidor lento. Retentando...";
+        fila[idx].status = 'pendente'; fila[idx].s = "⚠️ Servidor lento. Retentando...";
         renderTelas();
         setTimeout(() => { processar(); }, 4000);
         return; 
       }
-
-      renderTelas(); 
-      processar();
+      renderTelas(); processar();
     }
   </script>
 </body>
