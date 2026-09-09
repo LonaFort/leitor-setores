@@ -10,11 +10,23 @@
     <style>
       @keyframes slideIn { from { opacity: 0; transform: translateY(-10px); } to { opacity: 1; transform: translateY(0); } }
       .animate-slide-in { animation: slideIn 0.3s cubic-bezier(0.4, 0, 0.2, 1); }
+      
+      /* MELHORIA 3: Animações de Flash de Tela */
+      @keyframes flashSuccess { 0% { box-shadow: inset 0 0 0 12px #10b981; } 100% { box-shadow: inset 0 0 0 0 transparent; } }
+      @keyframes flashError { 0% { box-shadow: inset 0 0 0 12px #ef4444; } 100% { box-shadow: inset 0 0 0 0 transparent; } }
+      .flash-verde { animation: flashSuccess 0.6s ease-out; }
+      .flash-vermelho { animation: flashError 0.6s ease-out; }
+      
       body { -webkit-tap-highlight-color: transparent; }
-      #reader video { object-fit: cover !important; border-radius: 0.75rem; }
+      
+      /* CSS Cirúrgico para alinhar a câmera perfeitamente */
+      #box-leitor { position: relative; display: flex; justify-content: center; align-items: center; min-height: 260px; }
+      #reader { width: 100%; height: 100%; border-radius: 0.75rem; overflow: hidden; position: absolute; inset: 0; }
+      #reader video, #reader canvas { width: 100% !important; height: 100% !important; object-fit: cover !important; position: absolute !important; top: 0 !important; left: 0 !important; border-radius: 0.75rem !important;}
+      #qr-shaded-region { border-radius: 0.75rem !important; }
     </style>
   </head>
-  <body class="bg-slate-50 text-slate-800 h-screen flex flex-col overflow-hidden font-sans selection:bg-teal-200">
+  <body class="bg-slate-50 text-slate-800 h-screen flex flex-col overflow-hidden font-sans selection:bg-teal-200" id="body-app">
     
     <!-- CABEÇALHO -->
     <header class="bg-white px-4 py-3 shadow-sm z-50 flex items-center justify-between border-b border-slate-100 flex-shrink-0">
@@ -45,6 +57,21 @@
         </div>
 
         <div id="box-leitor" class="bg-slate-900 rounded-2xl shadow-inner mb-4 overflow-hidden relative border-4 border-slate-800 transition-colors">
+          
+          <!-- MELHORIA 2: Botão Trocar Lente -->
+          <button id="btn-trocar-camera" onclick="trocarLente()" class="absolute top-3 right-3 z-30 bg-black/60 text-white p-3 rounded-full hidden hover:bg-black/80 transition-colors shadow-lg backdrop-blur-sm">
+            <i class="ph-bold ph-arrows-left-right text-xl"></i>
+          </button>
+
+          <!-- MELHORIA 4: Tela de Repouso -->
+          <div id="overlay-pausa" onclick="acordarCamera()" class="absolute inset-0 z-40 bg-slate-900/95 flex flex-col items-center justify-center text-white cursor-pointer hidden backdrop-blur-md">
+            <div class="bg-white/10 p-4 rounded-full mb-3 animate-pulse">
+              <i class="ph-bold ph-power text-4xl text-white"></i>
+            </div>
+            <span class="font-black text-lg">Câmera em Repouso</span>
+            <span class="text-sm text-slate-400 font-bold mt-1">Toque aqui para reativar</span>
+          </div>
+
           <div id="reader" class="w-full bg-black min-h-[250px] flex items-center justify-center text-slate-500 font-medium text-sm text-center px-4">Aguardando operador...</div>
         </div>
 
@@ -90,7 +117,7 @@
 
     <script>
       // =========================================================================
-      // URL DO SEU GOOGLE APPS SCRIPT MANTIDA INTACTA
+      // URL DO GOOGLE APPS SCRIPT
       // =========================================================================
       const URL_API_GOOGLE = "https://script.google.com/macros/s/AKfycbzp4spSLWEJvkdf3GqPZ9prwtzuz_HmrZ70gRbpoGbpB2-P2Sjtc1Nfrb63YWsekCO3ww/exec"; 
 
@@ -108,6 +135,12 @@
       var totaisGerais = {"CORTE":0, "EMBALAGEM":0, "ENTREGA":0}, mods = {}, fila = [], proc = false, scanner = null;
       var abaAtual = 0, codUltimoScan = "", timeUltimoScan = 0;
       
+      // Variáveis para as melhorias de hardware
+      var listaLentes = [];
+      var lenteAtualIndex = 0;
+      var timerRepouso = null;
+      const TEMPO_REPOUSO_MS = 120000; // 2 minutos
+      
       var inputOp = document.getElementById('operador');
       inputOp.value = localStorage.getItem('opLona') || '';
       inputOp.addEventListener('blur', () => { 
@@ -118,6 +151,14 @@
       });
       document.getElementById('cod-man').addEventListener("keyup", function(e) { if (e.key === "Enter") enviarManual(); });
 
+      // MELHORIA 3: Disparar Flash na tela Inteira
+      function piscarTela(tipo) {
+        const bd = document.getElementById('body-app');
+        bd.classList.remove('flash-verde', 'flash-vermelho');
+        void bd.offsetWidth; // Força reinício da animação
+        bd.classList.add(tipo === 'ok' ? 'flash-verde' : 'flash-vermelho');
+      }
+
       window.onload = function() {
         document.getElementById('titulo-app').innerText = setorApp;
         document.getElementById('titulo-app').classList.add(tema.color);
@@ -126,12 +167,87 @@
         document.getElementById('box-leitor').classList.replace('border-slate-800', tema.border);
         
         atualizarAbaVisual(0);
+
+        // Mapeia todas as câmeras antes de iniciar
+        Html5Qrcode.getCameras().then(devices => {
+          if (devices && devices.length > 1) {
+            // Filtra só as câmeras traseiras (ignora as frontais de selfie)
+            listaLentes = devices.filter(d => d.label.toLowerCase().includes('back') || d.label.toLowerCase().includes('traseira'));
+            if(listaLentes.length === 0) listaLentes = devices; // Fallback
+            
+            if(listaLentes.length > 1) {
+                document.getElementById('btn-trocar-camera').classList.remove('hidden');
+            }
+          }
+        }).catch(err => console.log("Sem permissão para listar lentes múltiplas"));
+
         if(inputOp.value !== "") iniciarSistema();
+        
+        // Ativa tracking de interação do usuário para adiar repouso
+        document.addEventListener('touchstart', reiniciarTimerRepouso);
+        document.addEventListener('mousemove', reiniciarTimerRepouso);
       };
+
+      // MELHORIA 4: Auto-Pausa
+      function reiniciarTimerRepouso() {
+        if(timerRepouso) clearTimeout(timerRepouso);
+        timerRepouso = setTimeout(pausarCamera, TEMPO_REPOUSO_MS);
+      }
+
+      function pausarCamera() {
+        if (scanner && scanner.isScanning) {
+          scanner.stop().then(() => {
+            document.getElementById('overlay-pausa').classList.remove('hidden');
+            document.getElementById('overlay-pausa').classList.add('flex');
+          }).catch(e => console.log(e));
+        }
+      }
+
+      function acordarCamera() {
+        document.getElementById('overlay-pausa').classList.add('hidden');
+        document.getElementById('overlay-pausa').classList.remove('flex');
+        reiniciarTimerRepouso();
+        iniciarCameraFisica();
+      }
+
+      // MELHORIA 2: Trocar Lente
+      function trocarLente() {
+        if(!scanner || listaLentes.length < 2) return;
+        
+        lenteAtualIndex++;
+        if(lenteAtualIndex >= listaLentes.length) lenteAtualIndex = 0;
+
+        if (scanner.isScanning) {
+           scanner.stop().then(() => {
+              iniciarCameraFisica();
+           });
+        }
+      }
 
       function iniciarSistema() {
         buscarResumoServidor();
-        if(!scanner) setTimeout(ligar, 500);
+        reiniciarTimerRepouso();
+        if(!scanner) setTimeout(iniciarCameraFisica, 500);
+      }
+
+      function iniciarCameraFisica() {
+        try {
+          if (!scanner) { scanner = new Html5Qrcode("reader"); }
+          document.getElementById('reader').innerHTML = '<div class="text-slate-400 p-4 absolute inset-0 flex items-center justify-center">Iniciando câmera...</div>';
+          
+          let camConfig = { fps: 20, qrbox: { width: 250, height: 250 }, formatsToSupport: [ Html5QrcodeSupportedFormats.QR_CODE ] };
+          
+          // Se o usuário selecionou uma lente específica no botão, usa ela. Se não, usa o automático traseiro
+          let hardwareConfig = (listaLentes.length > 0) ? { deviceId: { exact: listaLentes[lenteAtualIndex].id } } : { facingMode: "environment" };
+
+          scanner.start(
+            hardwareConfig, 
+            camConfig, 
+            function(c) { adicionarAFila(c); }
+          ).catch(function(err) { 
+            document.getElementById('reader').innerHTML = '<div class="text-red-500 font-bold p-4 absolute inset-0 flex items-center justify-center text-center">Erro ao abrir câmera.<br>Feche o app e tente novamente.</div>';
+          });
+        } catch(err) {}
       }
 
       async function buscarResumoServidor() {
@@ -172,51 +288,27 @@
         document.getElementById('lista-mods').innerHTML = h || "<div class='text-center text-slate-400 py-2'>Nenhum pedido hoje.</div>";
       }
 
-      // CORREÇÃO 1: CÂMERA OTIMIZADA PARA NÃO TRAVAR
-      function ligar() {
-        try {
-          if (!scanner) { 
-            scanner = new Html5Qrcode("reader"); 
-          }
-          document.getElementById('reader').innerHTML = '<div class="text-slate-400 p-4">Iniciando câmera...</div>';
-          
-          // Removido o videoConstraints que causa crash em alguns Androids
-          scanner.start(
-            { facingMode: "environment" }, 
-            { fps: 10, qrbox: { width: 250, height: 250 } }, 
-            function(c) { adicionarAFila(c); }
-          ).catch(function(err) { 
-            console.error("Erro de câmera:", err);
-            document.getElementById('reader').innerHTML = '<div class="text-red-500 font-bold p-4">Erro ao abrir câmera.<br>Feche o app e tente novamente.</div>';
-          });
-        } catch(err) {
-            console.error(err);
-        }
-      }
-
       function enviarManual() { 
         if(inputOp.value === "") { alert("Digite seu nome!"); inputOp.focus(); return; }
         let v = document.getElementById('cod-man').value; 
         if(v) { adicionarAFila(v); document.getElementById('cod-man').value=""; } 
       }
 
-      // CORREÇÃO 2: LEITURA INTELIGENTE 100% PRECISA
       function adicionarAFila(codigo) {
         if(inputOp.value === "") { alert("Digite seu nome primeiro!"); inputOp.focus(); return; }
+        reiniciarTimerRepouso();
+        
         let agora = Date.now();
         let codString = String(codigo).trim();
 
         if(codString === codUltimoScan && (agora - timeUltimoScan) < 4000) return;
         codUltimoScan = codString; timeUltimoScan = agora;
-        bip(1000, 0.1);
+        bip(800, 0.1);
 
-        // EXTRATOR BLINDADO: Puxa todos os números do QR Code e escolhe o maior bloco
         let idEncontrado = codString;
         let numeros = codString.match(/\d+/g); 
         
         if (numeros && numeros.length > 0) {
-            // Se o QR for "L.ped 1 ( 751269 )", ele pega o 751269.
-            // Se for "1 - 2000014929751269", ele pega o 2000014929751269.
             idEncontrado = numeros.reduce((a, b) => a.length > b.length ? a : b);
         }
 
@@ -228,6 +320,7 @@
         renderTelas();
         if(!proc) processar();
       }
+
       function renderTelas() {
         document.getElementById('cont-lista').innerText = fila.length;
         if(fila.length === 0) return;
@@ -245,6 +338,10 @@
              cardStyle = "bg-amber-500 border-transparent text-white shadow-md animate-shake";
              icon = `<i class="ph-fill ph-warning-circle text-white text-2xl"></i>`;
              modStyle = "bg-black/20 text-white";
+           } else if(i.status === 'pendente') {
+             cardStyle = "bg-yellow-400 border-transparent text-slate-900 shadow-md";
+             icon = `<i class="ph-bold ph-wifi-slash text-slate-900 text-2xl"></i>`;
+             modStyle = "bg-black/10 text-slate-800";
            }
 
            return `
@@ -268,8 +365,10 @@
         document.getElementById('historico-lista').innerHTML = h;
       }
 
+      // MELHORIA 1: Fila Inteligente (Offline/Retentativa)
       async function processar() {
-        let i = fila.find(x => x.status === 'load');
+        // Tenta achar os que acabaram de entrar ('load') ou que caíram a internet antes ('pendente')
+        let i = fila.find(x => x.status === 'load' || x.status === 'pendente');
         if(!i) { proc = false; return; }
         proc = true;
         
@@ -279,18 +378,28 @@
           let idx = fila.findIndex(x => x.id === i.id);
           
           if(r.sucesso) {
-            bip(1500, 0.3); 
+            bip(1500, 0.2); 
+            piscarTela('ok');
             fila[idx].status = 'ok'; fila[idx].s = "OK"; fila[idx].lp = r.lped; fila[idx].ped = r.cod; fila[idx].mod = r.mod;
             totaisGerais[setorApp]++;
             let nomeMod = r.mod.replace(" (Pronto)", ""); 
             mods[nomeMod] = (mods[nomeMod] || 0) + 1; 
             atualizarGaveta();
           } else { 
-            bip(200, 0.5); fila[idx].status = 'erro'; fila[idx].s = r.erro; 
+            bip(200, 0.4); 
+            piscarTela('erro');
+            fila[idx].status = 'erro'; fila[idx].s = r.erro; 
           }
         } catch (err) {
+          // INTERNET CAIU OU DEU TIMEOUT
           let idx = fila.findIndex(x => x.id === i.id);
-          bip(200, 0.5); fila[idx].status = 'erro'; fila[idx].s = "Falha de conexão.";
+          fila[idx].status = 'pendente'; 
+          fila[idx].s = "⏳ Sem internet. Retentando...";
+          renderTelas();
+          
+          // Agenda uma nova tentativa fantasma daqui a 5 segundos
+          setTimeout(() => { processar(); }, 5000);
+          return; // Para o fluxo principal aqui, deixa o setTimeout cuidar
         }
 
         renderTelas(); 
