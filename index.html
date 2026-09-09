@@ -203,37 +203,31 @@
         if(!scanner) setTimeout(iniciarCameraFisica, 500);
       }
 
-      // CÂMERA BLINDADA: Nunca falha na tela preta
+      // CÂMERA BLINDADA: Corrige erro de tela preta e tenta fallback
       function iniciarCameraFisica() {
         try {
           if (!scanner) { scanner = new Html5Qrcode("reader"); }
           document.getElementById('reader').innerHTML = '<div class="text-slate-400 p-4 absolute inset-0 flex items-center justify-center">Iniciando câmera...</div>';
           
-          let hardwareConfig = { facingMode: "environment" }; // Padrão universal
-          if (listaLentes.length > 0 && lenteAtualIndex > 0) {
-              hardwareConfig = { deviceId: { exact: listaLentes[lenteAtualIndex].id } };
+          let camConfig = { fps: 15, qrbox: { width: 250, height: 250 } };
+          
+          // Usa o ID da lente (String) ou o modo automático
+          let alvoCamera = { facingMode: "environment" };
+          if (listaLentes.length > 0 && listaLentes[lenteAtualIndex]) {
+             alvoCamera = listaLentes[lenteAtualIndex].id;
           }
 
-          scanner.start(
-            hardwareConfig, 
-            { fps: 15, qrbox: { width: 250, height: 250 } }, 
-            function(c) { adicionarAFila(c); }
-          ).catch(function(err) { 
-             // Se falhar (ex: aba anônima), força a abertura genérica
-             scanner.start({ video: true }, { fps: 15, qrbox: { width: 250, height: 250 } }, function(c) { adicionarAFila(c); })
+          scanner.start(alvoCamera, camConfig, function(c) { adicionarAFila(c); })
+          .catch(function(err) { 
+             console.log("Falha ao abrir lente específica:", err);
+             // Fallback: Se a lente específica der pau, força a câmera traseira padrão
+             scanner.start({ facingMode: "environment" }, camConfig, function(c) { adicionarAFila(c); })
              .catch(function(err2) {
-                document.getElementById('reader').innerHTML = '<div class="text-red-500 font-bold p-4 absolute inset-0 flex items-center justify-center text-center">Permita o uso da câmera no navegador.</div>';
+                // Agora ele vai mostrar o erro real que o celular está devolvendo, em vez de mentir sobre a permissão
+                document.getElementById('reader').innerHTML = `<div class="text-red-500 font-bold p-4 absolute inset-0 flex flex-col items-center justify-center text-center text-xs gap-2"><i class="ph-bold ph-warning text-2xl"></i> Câmera bloqueada pelo aparelho.<br><br>Detalhe: ${err2}</div>`;
              });
           });
-        } catch(err) {}
-      }
-
-      async function buscarResumoServidor() {
-        try {
-          const req = await fetch(URL_API_GOOGLE, { method: 'POST', body: JSON.stringify({ acao: "buscarResumo", etapa: setorApp }) });
-          const res = await req.json();
-          totaisGerais = res.totais; mods = res.mods; atualizarGaveta(); 
-        } catch (e) {}
+        } catch(err) { console.error(err); }
       }
 
       function irParaAba(index) {
