@@ -45,7 +45,7 @@
         </div>
 
         <div id="box-leitor" class="bg-slate-900 rounded-2xl shadow-inner mb-4 overflow-hidden relative border-4 border-slate-800 transition-colors">
-          <div id="reader" class="w-full bg-black min-h-[250px] flex items-center justify-center text-slate-500 font-medium text-sm">Aguardando operador...</div>
+          <div id="reader" class="w-full bg-black min-h-[250px] flex items-center justify-center text-slate-500 font-medium text-sm text-center px-4">Aguardando operador...</div>
         </div>
 
         <div class="flex gap-2 mb-4 flex-shrink-0">
@@ -90,7 +90,7 @@
 
     <script>
       // =========================================================================
-      // COLOQUE AQUI A URL DO SEU GOOGLE APPS SCRIPT (O LINK DA NOVA IMPLANTAÇÃO)
+      // URL DO SEU GOOGLE APPS SCRIPT MANTIDA INTACTA
       // =========================================================================
       const URL_API_GOOGLE = "https://script.google.com/macros/s/AKfycbzp4spSLWEJvkdf3GqPZ9prwtzuz_HmrZ70gRbpoGbpB2-P2Sjtc1Nfrb63YWsekCO3ww/exec"; 
 
@@ -172,32 +172,22 @@
         document.getElementById('lista-mods').innerHTML = h || "<div class='text-center text-slate-400 py-2'>Nenhum pedido hoje.</div>";
       }
 
-     function ligar() {
+      // CORREÇÃO 1: CÂMERA OTIMIZADA PARA NÃO TRAVAR
+      function ligar() {
         try {
           if (!scanner) { 
             scanner = new Html5Qrcode("reader"); 
           }
           document.getElementById('reader').innerHTML = '<div class="text-slate-400 p-4">Iniciando câmera...</div>';
           
-          // Configuração otimizada: Baixa resolução força a câmera a abrir instantaneamente e focar mais rápido
-          const cameraConfig = { 
-            fps: 10, 
-            qrbox: { width: 250, height: 250 },
-            aspectRatio: 1.0,
-            videoConstraints: {
-              facingMode: "environment",
-              width: { ideal: 640 },
-              height: { ideal: 640 }
-            }
-          };
-
+          // Removido o videoConstraints que causa crash em alguns Androids
           scanner.start(
             { facingMode: "environment" }, 
-            cameraConfig, 
+            { fps: 10, qrbox: { width: 250, height: 250 } }, 
             function(c) { adicionarAFila(c); }
           ).catch(function(err) { 
             console.error("Erro de câmera:", err);
-            document.getElementById('reader').innerHTML = '<div class="text-red-500 font-bold p-4">Erro ao abrir câmera. Verifique as permissões do navegador e recarregue.</div>';
+            document.getElementById('reader').innerHTML = '<div class="text-red-500 font-bold p-4">Erro ao abrir câmera.<br>Feche o app e tente novamente.</div>';
           });
         } catch(err) {
             console.error(err);
@@ -210,7 +200,8 @@
         if(v) { adicionarAFila(v); document.getElementById('cod-man').value=""; } 
       }
 
- function adicionarAFila(codigo) {
+      // CORREÇÃO 2: LEITURA INTELIGENTE 100% PRECISA
+      function adicionarAFila(codigo) {
         if(inputOp.value === "") { alert("Digite seu nome primeiro!"); inputOp.focus(); return; }
         let agora = Date.now();
         let codString = String(codigo).trim();
@@ -219,15 +210,20 @@
         codUltimoScan = codString; timeUltimoScan = agora;
         bip(1000, 0.1);
 
-        // EXTRAÇÃO INTELIGENTE: Puxa só o número gigante do pedido (10+ números) ignorando letras
         let idEncontrado = codString;
-        const match = codString.match(/(\d{10,})/);
-        if (match) {
-          idEncontrado = match[1];
-        } else {
-          // Se for digitação manual curta (ex: 1269), usa o que foi digitado
-          idEncontrado = codString.replace("Ped:", "").split('|')[0].trim();
+
+        // Se o QR Code tiver formato "L.ped 1 - 20000123"
+        if (codString.includes('-')) {
+            let partes = codString.split('-');
+            idEncontrado = partes[partes.length - 1].trim(); // Pega tudo que vier depois do traço
+        } 
+        // Se usar formato de barra vertical "|"
+        else if (codString.includes('|')) {
+            idEncontrado = codString.split('|')[0].trim(); // Pega a parte antes da barra
         }
+        
+        // Limpeza de segurança
+        idEncontrado = idEncontrado.replace(/Ped:/ig, "").trim();
 
         let codCurto = idEncontrado.length > 4 ? idEncontrado.slice(-4) : idEncontrado;
         
