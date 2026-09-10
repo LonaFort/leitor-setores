@@ -98,12 +98,14 @@
 
     function iniciarCamera() { 
       html5QrcodeScanner = new Html5Qrcode("reader"); 
+      
+      // Removemos o quadrado fixo (qrbox) para o Android abrir a câmera livremente
       html5QrcodeScanner.start(
         { facingMode: "environment" }, 
-        { fps: 15, qrbox: { width: 220, height: 220 } }, // Removido o quadrado fixo, câmera vai abrir linda!
+        { fps: 15 }, 
         (decodedText) => { onScan(decodedText); }
       ).catch(err => { 
-        document.getElementById('reader').innerHTML = '<p class="text-white text-center mt-20 font-bold">Câmera Indisponível</p>'; 
+        document.getElementById('reader').innerHTML = '<p class="text-white text-center mt-20 font-bold">⚠️ Libere o acesso à Câmera no navegador.</p>'; 
       }); 
     }
 
