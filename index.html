@@ -100,7 +100,7 @@
       html5QrcodeScanner = new Html5Qrcode("reader"); 
       html5QrcodeScanner.start(
         { facingMode: "environment" }, 
-        { fps: 15, qrbox: { width: 250, height: 250 }, aspectRatio: 1.0 }, 
+        { fps: 15, qrbox: { width: 220, height: 220 } }, // Removido o quadrado fixo, câmera vai abrir linda!
         (decodedText) => { onScan(decodedText); }
       ).catch(err => { 
         document.getElementById('reader').innerHTML = '<p class="text-white text-center mt-20 font-bold">Câmera Indisponível</p>'; 
