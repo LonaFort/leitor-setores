@@ -54,7 +54,7 @@
         <div class="absolute inset-0 pointer-events-none border-[3px] border-white/20 m-6 rounded-xl"></div>
       </div>
       <form onsubmit="adicionarManual(event)" class="flex gap-2">
-        <input type="text" id="input-manual" placeholder="Digitar código..." class="flex-1 bg-white border border-slate-200 rounded-xl px-4 py-3 text-sm font-bold focus:outline-none shadow-sm" autocomplete="off">
+        <input type="text" id="input-manual" placeholder="Digitar código ou linha..." class="flex-1 bg-white border border-slate-200 rounded-xl px-4 py-3 text-sm font-bold focus:outline-none shadow-sm" autocomplete="off">
         <button type="submit" class="bg-slate-800 text-white px-5 rounded-xl font-bold shadow-sm"><i class="ph ph-arrow-right text-lg"></i></button>
       </form>
       <div id="ultimo-bip-container"></div>
@@ -64,8 +64,8 @@
   </main>
 
   <script>
-    // 🚨 COLOQUE A NOVA URL AQUI!!! 🚨
-    const URL_API_GOOGLE = "https://script.google.com/macros/s/AKfycbzJFEb0gSNmyvsXIwCHD1uqW1VLKogIZFmUh2Sd0NvM7lISB4B105FhVc2_BgJ3SjdW/exec";
+    // 🚨 COLE A URL DA SUA NOVA IMPLANTAÇÃO ABAIXO:
+    const URL_API_GOOGLE = "https://script.google.com/macros/s/SUA_NOVA_URL_AQUI/exec";
     
     const urlParams = new URLSearchParams(window.location.search);
     const setorApp = urlParams.get('setor') ? urlParams.get('setor').toUpperCase() : "CORTE"; 
@@ -94,51 +94,68 @@
 
     async function buscarResumoServidor() { const icon = document.getElementById('icone-sync'); icon.classList.add('animate-spin'); try { const req = await fetch(URL_API_GOOGLE, { method: 'POST', body: JSON.stringify({ acao: "buscarResumo", etapa: setorApp }) }); const res = await req.json(); if(res.totais) document.getElementById('total-processado').innerText = res.totais[setorApp] || 0; } catch (e) {} icon.classList.remove('animate-spin'); }
 
-    let ultimoBipeTime = 0; // Memória do último bipe
+    let ultimoBipeTime = 0; 
 
+    // Câmera sem travas de formato (lê QR Code e Código de Barras normal)
     function iniciarCamera() { 
       html5QrcodeScanner = new Html5Qrcode("reader"); 
-      
-      // Removemos o quadrado fixo (qrbox) para o Android abrir a câmera livremente
       html5QrcodeScanner.start(
-        { facingMode: "environment" }, 
-        { fps: 15 }, 
+        { facingMode: "environment", focusMode: "continuous" }, 
+        { 
+          fps: 15, 
+          qrbox: { width: 250, height: 250 } 
+        }, 
         (decodedText) => { onScan(decodedText); }
       ).catch(err => { 
-        document.getElementById('reader').innerHTML = '<p class="text-white text-center mt-20 font-bold">⚠️ Libere o acesso à Câmera no navegador.</p>'; 
+        document.getElementById('reader').innerHTML = '<p class="text-slate-500 text-center mt-20 font-bold">⚠️ Libere o acesso à Câmera no navegador.</p>'; 
       }); 
     }
 
     function onScan(codigo) { 
       let agora = Date.now();
-      // TRAVA DE 2 SEGUNDOS (2000 milissegundos)
       if (agora - ultimoBipeTime < 2000) return; 
       
-      ultimoBipeTime = agora; // Atualiza a memória
+      ultimoBipeTime = agora; 
       bip(800, 0.1); 
       adicionarFila(codigo); 
     }
+    
     function adicionarManual(e) { e.preventDefault(); let val = document.getElementById('input-manual').value.trim(); if(val) { adicionarFila(val); document.getElementById('input-manual').value = ''; } }
 
+    // Inteligência para digitação manual (Linha ou Código)
     function adicionarFila(codigoRaw) {
       if(!inputOp.value.trim()) { alert("Digite o nome do Operador antes de bipar!"); return; }
       let id = Date.now().toString();
-      let c = codigoRaw; let lped = "";
+      let c = codigoRaw.trim(); 
+      let lped = "";
       
-      // LÓGICA MÁGICA DO QR CODE (L.ped X - YYYYYYY)
-      let regex = /L\.ped\s+(\d+)\s*-\s*([A-Za-z0-9]+)/i;
-      let match = c.match(regex);
+      let regexQR = /L\.ped\s+(\d+)\s*-\s*([A-Za-z0-9]+)/i;
+      let match = c.match(regexQR);
       
-      if(match) { lped = match[1]; c = match[2]; } 
-      else if(c.includes("L.") || c.includes("L:")) { lped = c.replace(/[^0-9]/g, ""); c = ""; }
+      if(match) { 
+        lped = match[1]; 
+        c = match[2]; 
+      } else {
+        let limpo = c.replace(/[^0-9]/g, ""); 
+        if (c.toUpperCase().includes("L") || (limpo.length > 0 && limpo.length <= 4)) {
+          lped = limpo;
+          c = "";
+        } else {
+          c = limpo;
+        }
+      }
 
+      if (c === "" && lped === "") return; 
       if(fila.some(x => (x.c === c && c !== "") || (x.lped === lped && lped !== ""))) return;
       
-      // Destaca os 6 últimos dígitos ou mostra o número cru instantaneamente!
       let exibicao = c;
-      if(c && c.length > 6) {
+      if (c !== "" && c.length > 6) {
           exibicao = `<span class="opacity-75">${c.slice(0, -6)}</span><b class="text-[14px] text-amber-300 ml-[1px]">${c.slice(-6)}</b>`;
-      } else if (!c && lped) { exibicao = `<span class="opacity-80">Por Linha</span>`; }
+      } else if (c !== "" && c.length <= 6) {
+          exibicao = `<b class="text-[14px] text-amber-300">${c}</b>`;
+      } else if (c === "" && lped !== "") { 
+          exibicao = `<span class="opacity-80">Linha: ${lped}</span>`; 
+      }
 
       fila.push({ id: id, c: c, lped: lped, status: 'load', s: 'Enviando pro Google...', lp: lped || '?', pedHtml: exibicao, mod: 'Buscando...', qtd: '-' });
       renderTelas(); if(!proc) processar();
