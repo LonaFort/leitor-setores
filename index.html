@@ -50,7 +50,7 @@
 
     <div id="aba-camera" class="flex flex-col gap-4">
       <div class="bg-slate-900 rounded-2xl overflow-hidden shadow-inner relative" style="height: 250px;">
-        <div id="reader" class="h-full w-full"></div>
+        <div id="reader" class="h-full w-full flex items-center justify-center text-slate-500">Iniciando câmera...</div>
         <div class="absolute inset-0 pointer-events-none border-[3px] border-white/20 m-6 rounded-xl"></div>
       </div>
       <form onsubmit="adicionarManual(event)" class="flex gap-2">
@@ -64,8 +64,8 @@
   </main>
 
   <script>
-    // 🚨 COLE A URL DA SUA NOVA IMPLANTAÇÃO ABAIXO:
-    const URL_API_GOOGLE = "https://script.google.com/macros/s/SUA_NOVA_URL_AQUI/exec";
+    // 🚨 COLE A URL DA SUA NOVA IMPLANTAÇÃO AQUI EMBAIXO 🚨
+    const URL_API_GOOGLE = "https://script.google.com/macros/s/AKfycbzJFEb0gSNmyvsXIwCHD1uqW1VLKogIZFmUh2Sd0NvM7lISB4B105FhVc2_BgJ3SjdW/exec";
     
     const urlParams = new URLSearchParams(window.location.search);
     const setorApp = urlParams.get('setor') ? urlParams.get('setor').toUpperCase() : "CORTE"; 
@@ -96,19 +96,25 @@
 
     let ultimoBipeTime = 0; 
 
-    // Câmera sem travas de formato (lê QR Code e Código de Barras normal)
+    // Câmera nativa e leve (Sem travar o FocusMode e sem limitar o formato)
     function iniciarCamera() { 
-      html5QrcodeScanner = new Html5Qrcode("reader"); 
-      html5QrcodeScanner.start(
-        { facingMode: "environment", focusMode: "continuous" }, 
-        { 
-          fps: 15, 
-          qrbox: { width: 250, height: 250 } 
-        }, 
-        (decodedText) => { onScan(decodedText); }
-      ).catch(err => { 
-        document.getElementById('reader').innerHTML = '<p class="text-slate-500 text-center mt-20 font-bold">⚠️ Libere o acesso à Câmera no navegador.</p>'; 
-      }); 
+      try {
+        html5QrcodeScanner = new Html5Qrcode("reader"); 
+        html5QrcodeScanner.start(
+          { facingMode: "environment" }, // Deixa o celular cuidar do foco sozinho
+          { 
+            fps: 10, // Um pouco mais baixo para economizar bateria e não travar o celular
+            qrbox: { width: 250, height: 250 } 
+          }, 
+          (decodedText) => { onScan(decodedText); }
+        ).catch(err => { 
+          document.getElementById('reader').innerHTML = `
+            <div class="text-center mt-10">
+              <p class="text-slate-400 font-bold mb-4">⚠️ Erro ao abrir a Câmera.</p>
+              <button onclick="iniciarCamera()" class="bg-slate-700 text-white px-4 py-2 rounded-lg font-bold text-sm">Tentar Novamente</button>
+            </div>`; 
+        }); 
+      } catch(e) {}
     }
 
     function onScan(codigo) { 
@@ -122,7 +128,6 @@
     
     function adicionarManual(e) { e.preventDefault(); let val = document.getElementById('input-manual').value.trim(); if(val) { adicionarFila(val); document.getElementById('input-manual').value = ''; } }
 
-    // Inteligência para digitação manual (Linha ou Código)
     function adicionarFila(codigoRaw) {
       if(!inputOp.value.trim()) { alert("Digite o nome do Operador antes de bipar!"); return; }
       let id = Date.now().toString();
