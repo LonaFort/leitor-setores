@@ -206,6 +206,36 @@
       } catch (err) { let idx = fila.findIndex(x => x.id === i.id); fila[idx].status = 'pendente'; fila[idx].s = "⚠️ Servidor lento. Retentando..."; renderTelas(); setTimeout(() => { processar(); }, 4000); return; }
       renderTelas(); processar();
     }
+    // ==========================================
+    // ESCUTA GLOBAL DO SCANNER (ESTILO CLAUDE - OPÇÃO 2)
+    // ==========================================
+    let bufferScanner = '';
+    let timeoutScanner;
+
+    document.addEventListener('keydown', (e) => {
+      // Se a página estiver escurecida carregando algo, ignora
+      if (proc) return; 
+
+      // Ignora teclas de controle (Shift, Ctrl, Alt) para não sujar o código
+      if (e.key.length > 1 && e.key !== 'Enter') return;
+
+      clearTimeout(timeoutScanner);
+
+      if (e.key === 'Enter') {
+        if (bufferScanner.length > 3) { 
+          // Se capturou algo, joga direto na sua função que já faz todo o trabalho!
+          adicionarFila(bufferScanner); 
+          bufferScanner = '';
+        }
+        return;
+      }
+
+      bufferScanner += e.key;
+
+      // Se demorar mais de 50 milissegundos entre uma tecla e outra, 
+      // assume que é um humano digitando e zera a memória. A pistola digita em 2ms.
+      timeoutScanner = setTimeout(() => { bufferScanner = ''; }, 50);
+    });
   </script>
 </body>
 </html>
