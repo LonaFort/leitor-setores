@@ -134,19 +134,24 @@
       let c = codigoRaw.trim(); 
       let lped = "";
       
-      let regexQR = /L\.ped\s+(\d+)\s*-\s*([A-Za-z0-9]+)/i;
-      let match = c.match(regexQR);
+      // 1. Filtro Novo: Limpa o QR Code do Mercado Livre (^id^ç^47980704061^...)
+      let matchML = c.match(/\^id\^ç\^(\d+)\^/i);
+      if (matchML) c = matchML[1];
       
-      if(match) { 
-        lped = match[1]; 
-        c = match[2]; 
+      // 2. Filtro da Etiqueta Pequena (L.ped 123 - Venda)
+      let regexQR = /L\.ped\s+(\d+)\s*-\s*([A-Za-z0-9]+)/i;
+      let matchPequena = c.match(regexQR);
+      
+      if(matchPequena) { 
+        lped = matchPequena[1]; 
+        c = matchPequena[2]; 
       } else {
         let limpo = c.replace(/[^0-9]/g, ""); 
         if (c.toUpperCase().includes("L") || (limpo.length > 0 && limpo.length <= 4)) {
           lped = limpo;
           c = "";
         } else {
-          c = limpo;
+          c = limpo; // Aqui vai cair o rastreio puro (ex: 47987495266)
         }
       }
 
