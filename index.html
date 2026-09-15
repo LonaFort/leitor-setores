@@ -10,10 +10,14 @@
   <style>
     @keyframes flash-ok { 0% { background-color: #22c55e; } 100% { background-color: transparent; } }
     @keyframes flash-erro { 0% { background-color: #ef4444; } 100% { background-color: transparent; } }
+    @keyframes flash-alerta { 0% { background-color: #f59e0b; } 100% { background-color: transparent; } }
     @keyframes slideIn { from { opacity: 0; transform: translateY(-10px); } to { opacity: 1; transform: translateY(0); } }
+    
     .animate-flash-ok { animation: flash-ok 0.4s ease-out; }
     .animate-flash-erro { animation: flash-erro 0.4s ease-out; }
+    .animate-flash-alerta { animation: flash-alerta 0.4s ease-out; }
     .animate-slide-in { animation: slideIn 0.3s ease-out forwards; }
+    
     #reader { width: 100%; border-radius: 0.75rem; overflow: hidden; border: none !important; }
     #reader video { object-fit: cover; }
   </style>
@@ -90,22 +94,25 @@
     const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
     function bip(freq, vol) { try { if(audioCtx.state==='suspended') audioCtx.resume(); const osc = audioCtx.createOscillator(); const gain = audioCtx.createGain(); osc.connect(gain); gain.connect(audioCtx.destination); osc.type = 'square'; osc.frequency.value = freq; gain.gain.setValueAtTime(vol, audioCtx.currentTime); gain.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.1); osc.start(); osc.stop(audioCtx.currentTime + 0.1); } catch (e) {} }
 
-    function piscarTela(tipo) { const body = document.getElementById('body-bg'); body.classList.remove('animate-flash-ok', 'animate-flash-erro'); void body.offsetWidth; if(tipo === 'ok') body.classList.add('animate-flash-ok'); else body.classList.add('animate-flash-erro'); }
+    function piscarTela(tipo) { 
+      const body = document.getElementById('body-bg'); 
+      body.classList.remove('animate-flash-ok', 'animate-flash-erro', 'animate-flash-alerta'); 
+      void body.offsetWidth; // Reinicia a animação
+      if(tipo === 'ok') body.classList.add('animate-flash-ok'); 
+      else if(tipo === 'alerta') body.classList.add('animate-flash-alerta'); 
+      else body.classList.add('animate-flash-erro'); 
+    }
 
     async function buscarResumoServidor() { const icon = document.getElementById('icone-sync'); icon.classList.add('animate-spin'); try { const req = await fetch(URL_API_GOOGLE, { method: 'POST', body: JSON.stringify({ acao: "buscarResumo", etapa: setorApp }) }); const res = await req.json(); if(res.totais) document.getElementById('total-processado').innerText = res.totais[setorApp] || 0; } catch (e) {} icon.classList.remove('animate-spin'); }
 
     let ultimoBipeTime = 0; 
 
-    // Câmera nativa e leve (Sem travar o FocusMode e sem limitar o formato)
     function iniciarCamera() { 
       try {
         html5QrcodeScanner = new Html5Qrcode("reader"); 
         html5QrcodeScanner.start(
-          { facingMode: "environment" }, // Deixa o celular cuidar do foco sozinho
-          { 
-            fps: 10, // Um pouco mais baixo para economizar bateria e não travar o celular
-            qrbox: { width: 250, height: 250 } 
-          }, 
+          { facingMode: "environment" }, 
+          { fps: 10, qrbox: { width: 250, height: 250 } }, 
           (decodedText) => { onScan(decodedText); }
         ).catch(err => { 
           document.getElementById('reader').innerHTML = `
@@ -134,11 +141,9 @@
       let c = codigoRaw.trim(); 
       let lped = "";
       
-      // 1. Filtro Novo: Limpa o QR Code do Mercado Livre (^id^ç^47980704061^...)
       let matchML = c.match(/\^id\^ç\^(\d+)\^/i);
       if (matchML) c = matchML[1];
       
-      // 2. Filtro da Etiqueta Pequena (L.ped 123 - Venda)
       let regexQR = /L\.ped\s+(\d+)\s*-\s*([A-Za-z0-9]+)/i;
       let matchPequena = c.match(regexQR);
       
@@ -148,10 +153,9 @@
       } else {
         let limpo = c.replace(/[^0-9]/g, ""); 
         if (c.toUpperCase().includes("L") || (limpo.length > 0 && limpo.length <= 4)) {
-          lped = limpo;
-          c = "";
+          lped = limpo; c = "";
         } else {
-          c = limpo; // Aqui vai cair o rastreio puro (ex: 47987495266)
+          c = limpo; 
         }
       }
 
@@ -168,14 +172,27 @@
       }
 
       fila.push({ id: id, c: c, lped: lped, status: 'load', s: 'Enviando pro Google...', lp: lped || '?', pedHtml: exibicao, mod: 'Buscando...', qtd: '-' });
-      renderTelas(); if(!proc) processar();
+      renderTelas(); 
+      if(!proc) processar(); // Se o Google não estiver ocupado, começa a despachar a fila
     }
 
     function gerarHtmlCartao(i) {
        let temaAtual = temas[setorApp] || temas["CORTE"];
        let cardStyle = "bg-white border-slate-200 text-slate-800"; let icon = `<i class="ph-bold ph-spinner animate-spin text-slate-400 text-3xl"></i>`;
-       if(i.status === 'ok') { cardStyle = `${temaAtual.bg} border-transparent text-white shadow-md`; icon = `<i class="ph-fill ph-check-circle text-white text-4xl drop-shadow-sm"></i>`; } 
-       else if(i.status === 'erro') { cardStyle = "bg-red-500 border-transparent text-white shadow-md"; icon = `<i class="ph-fill ph-warning-circle text-white text-4xl drop-shadow-sm"></i>`; }
+       
+       if(i.status === 'ok') { 
+         cardStyle = `${temaAtual.bg} border-transparent text-white shadow-md`; 
+         icon = `<i class="ph-fill ph-check-circle text-white text-4xl drop-shadow-sm"></i>`; 
+       } 
+       else if(i.status === 'alerta') { 
+         cardStyle = "bg-amber-500 border-transparent text-white shadow-md"; 
+         icon = `<i class="ph-fill ph-warning text-white text-4xl drop-shadow-sm"></i>`; 
+       }
+       else if(i.status === 'erro') { 
+         cardStyle = "bg-red-500 border-transparent text-white shadow-md"; 
+         icon = `<i class="ph-fill ph-warning-circle text-white text-4xl drop-shadow-sm"></i>`; 
+       }
+
        return `<div id="${i.id}" class="animate-slide-in p-4 rounded-2xl border flex items-center justify-between gap-2 transition-all duration-300 ${cardStyle}">
          <div class="flex-1 overflow-hidden">
            <div class="flex items-center gap-3 mb-2">
@@ -186,7 +203,7 @@
              <span class="text-[11px] font-black uppercase px-2 py-1.5 rounded-md bg-white/20 shadow-sm truncate max-w-[60%]">${i.mod}</span>
              <span class="text-[12px] font-black uppercase px-2 py-1.5 rounded-md bg-white/20 shadow-sm">QTD: ${i.qtd}</span>
            </div>
-           ${i.status !== 'ok' && i.status !== 'load' ? `<p class="text-xs font-bold mt-2 opacity-90">${i.s}</p>` : ''}
+           ${i.status !== 'ok' && i.status !== 'load' ? `<p class="text-xs font-bold mt-2 opacity-100 bg-white/20 px-2 py-1 rounded">${i.s}</p>` : ''}
          </div>
          <div class="flex-shrink-0">${icon}</div>
        </div>`;
@@ -197,25 +214,53 @@
     async function processar() {
       let i = fila.find(x => x.status === 'load' || x.status === 'pendente');
       if(!i) { proc = false; return; }
+      
       proc = true;
       try {
         const req = await fetch(URL_API_GOOGLE, { method: 'POST', body: JSON.stringify({ acao: "processarLogistica", codigo: i.c, lped: i.lped, operador: inputOp.value, etapa: setorApp }) });
-        const r = await req.json(); let idx = fila.findIndex(x => x.id === i.id);
-        if(r.sucesso) { bip(1500, 0.2); piscarTela('ok'); fila[idx].status = 'ok'; fila[idx].s = "OK"; fila[idx].lp = r.lped || '?'; fila[idx].mod = r.mod || 'SEM MODALIDADE'; fila[idx].qtd = r.qtd || '-'; buscarResumoServidor(); } 
-        else { bip(200, 0.4); piscarTela('erro'); fila[idx].status = 'erro'; fila[idx].s = r.erro; }
-      } catch (err) { let idx = fila.findIndex(x => x.id === i.id); fila[idx].status = 'pendente'; fila[idx].s = "⚠️ Servidor lento. Retentando..."; renderTelas(); setTimeout(() => { processar(); }, 4000); return; }
+        const r = await req.json(); 
+        let idx = fila.findIndex(x => x.id === i.id);
+        
+        if(r.sucesso) { 
+          bip(1500, 0.2); 
+          piscarTela('ok'); 
+          fila[idx].status = 'ok'; 
+          fila[idx].s = "OK"; 
+          fila[idx].lp = r.lped || '?'; 
+          fila[idx].mod = r.mod || 'SEM MODALIDADE'; 
+          fila[idx].qtd = r.qtd || '-'; 
+          buscarResumoServidor(); 
+        } 
+        else { 
+          if(r.cor === "amarelo") {
+            bip(500, 0.3); // Som médio
+            piscarTela('alerta'); 
+            fila[idx].status = 'alerta'; 
+          } else {
+            bip(200, 0.4); // Som grave (erro crítico)
+            piscarTela('erro'); 
+            fila[idx].status = 'erro'; 
+          }
+          fila[idx].s = r.erro; 
+        }
+      } catch (err) { 
+        let idx = fila.findIndex(x => x.id === i.id); 
+        fila[idx].status = 'pendente'; 
+        fila[idx].s = "⚠️ Sem Internet. Tentando denovo..."; 
+        renderTelas(); 
+        setTimeout(() => { processar(); }, 4000); 
+        return; 
+      }
       renderTelas(); processar();
     }
+
     // ==========================================
-    // ESCUTA GLOBAL DO SCANNER (ESTILO CLAUDE - OPÇÃO 2)
+    // ESCUTA GLOBAL DO SCANNER
     // ==========================================
     let bufferScanner = '';
     let timeoutScanner;
 
     document.addEventListener('keydown', (e) => {
-      // Se a página estiver escurecida carregando algo, ignora
-      if (proc) return; 
-
       // Ignora teclas de controle (Shift, Ctrl, Alt) para não sujar o código
       if (e.key.length > 1 && e.key !== 'Enter') return;
 
@@ -223,7 +268,6 @@
 
       if (e.key === 'Enter') {
         if (bufferScanner.length > 3) { 
-          // Se capturou algo, joga direto na sua função que já faz todo o trabalho!
           adicionarFila(bufferScanner); 
           bufferScanner = '';
         }
@@ -232,8 +276,7 @@
 
       bufferScanner += e.key;
 
-      // Se demorar mais de 50 milissegundos entre uma tecla e outra, 
-      // assume que é um humano digitando e zera a memória. A pistola digita em 2ms.
+      // Zera o buffer se houver pausa na digitação (pistola digita super rápido)
       timeoutScanner = setTimeout(() => { bufferScanner = ''; }, 50);
     });
   </script>
