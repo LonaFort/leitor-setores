@@ -12,17 +12,16 @@
     @keyframes flash-erro { 0% { background-color: #ef4444; } 100% { background-color: transparent; } }
     @keyframes flash-alerta { 0% { background-color: #f59e0b; } 100% { background-color: transparent; } }
     @keyframes slideIn { from { opacity: 0; transform: translateY(-10px); } to { opacity: 1; transform: translateY(0); } }
-    
     .animate-flash-ok { animation: flash-ok 0.4s ease-out; }
     .animate-flash-erro { animation: flash-erro 0.4s ease-out; }
     .animate-flash-alerta { animation: flash-alerta 0.4s ease-out; }
     .animate-slide-in { animation: slideIn 0.3s ease-out forwards; }
-    
     #reader { width: 100%; border-radius: 0.75rem; overflow: hidden; border: none !important; }
     #reader video { object-fit: cover; }
   </style>
 </head>
-<body class="bg-slate-50 text-slate-800 h-screen flex flex-col font-sans overflow-hidden transition-colors duration-300" id="body-bg">
+<!-- h-[100dvh] GARANTE QUE O SCROLL FUNCIONE NO IPHONE/ANDROID -->
+<body class="bg-slate-50 text-slate-800 h-[100dvh] flex flex-col font-sans overflow-hidden transition-colors duration-300" id="body-bg">
 
   <header class="bg-white px-4 py-3 shadow-sm z-10 flex items-center justify-between shrink-0">
     <div class="flex items-center gap-2">
@@ -49,8 +48,7 @@
 
   <main class="flex-1 overflow-y-auto p-4 flex flex-col gap-4">
     
-    <!-- DASHBOARD SUPERIOR -->
-    <div class="bg-white border border-slate-200 rounded-2xl p-4 shadow-sm flex items-center justify-between">
+    <div class="bg-white border border-slate-200 rounded-2xl p-4 shadow-sm flex items-center justify-between shrink-0">
       <div>
         <p class="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1">Total Processado</p>
         <p class="text-3xl font-black text-slate-800 leading-none" id="total-processado">0</p>
@@ -60,8 +58,8 @@
       </button>
     </div>
 
-    <!-- PAINEL DE VIAGEM (CRONÔMETRO) - Só aparece na ENTREGA (BACKUP) -->
-    <div id="painel-viagem" class="hidden bg-slate-800 border border-slate-700 rounded-2xl p-4 shadow-md flex-col justify-between relative overflow-hidden">
+    <!-- PAINEL DE VIAGEM (CRONÔMETRO DE BACKUP) -->
+    <div id="painel-viagem" class="hidden bg-slate-800 border border-slate-700 rounded-2xl p-4 shadow-md flex-col justify-between relative overflow-hidden shrink-0">
       <div class="flex justify-between items-center relative z-10 mb-2">
         <div>
           <p class="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Lote de Embarque</p>
@@ -72,32 +70,32 @@
           <p class="text-4xl font-mono font-black text-slate-300 tracking-tighter" id="display-tempo">10:00</p>
         </div>
       </div>
-      <!-- Botão para fechar viagem no celular caso precise -->
       <button onclick="forcarFechamentoViagemMobile()" class="w-full bg-slate-700 hover:bg-slate-600 text-white text-xs font-bold py-2 rounded border border-slate-600 mt-2">
         <i class="ph-bold ph-stop-circle"></i> Forçar Fechar Viagem
       </button>
     </div>
 
-    <!-- ABAS -->
     <div class="flex rounded-xl bg-slate-200 p-1 shrink-0 mt-2">
       <button onclick="alternarAba('camera')" id="btn-tab-camera" class="flex-1 py-2 rounded-lg text-sm font-bold bg-white shadow text-slate-800 transition-all flex items-center justify-center gap-2"><i class="ph ph-camera text-lg"></i> Câmera</button>
       <button onclick="alternarAba('fila')" id="btn-tab-fila" class="flex-1 py-2 rounded-lg text-sm font-bold text-slate-500 transition-all flex items-center justify-center gap-2"><i class="ph ph-list-dashes text-lg"></i> Fila (<span id="cont-lista">0</span>)</button>
     </div>
 
-    <!-- CAMERA -->
-    <div id="aba-camera" class="flex flex-col gap-4">
-      <div class="bg-slate-900 rounded-2xl overflow-hidden shadow-inner relative" style="height: 250px;">
+    <div id="aba-camera" class="flex flex-col gap-4 pb-12">
+      <!-- CÂMERA COM TAMANHO REDUZIDO -->
+      <div class="bg-slate-900 rounded-2xl overflow-hidden shadow-inner relative shrink-0" style="height: 200px;">
         <div id="reader" class="h-full w-full flex items-center justify-center text-slate-500">Iniciando câmera...</div>
         <div class="absolute inset-0 pointer-events-none border-[3px] border-white/20 m-6 rounded-xl"></div>
       </div>
-      <form onsubmit="adicionarManual(event)" class="flex gap-2">
+      
+      <!-- CAIXA DO ÚLTIMO BIP SOBE PRA FICAR ENTRE A CÂMERA E O TECLADO -->
+      <div id="ultimo-bip-container"></div>
+      
+      <form onsubmit="adicionarManual(event)" class="flex gap-2 shrink-0">
         <input type="text" id="input-manual" placeholder="Digitar código ou linha..." class="flex-1 bg-white border border-slate-200 rounded-xl px-4 py-3 text-sm font-bold focus:outline-none shadow-sm" autocomplete="off">
         <button type="submit" class="bg-slate-800 text-white px-5 rounded-xl font-bold shadow-sm"><i class="ph ph-arrow-right text-lg"></i></button>
       </form>
-      <div id="ultimo-bip-container"></div>
     </div>
 
-    <!-- FILA -->
     <div id="aba-fila" class="hidden flex-col gap-2 pb-10"><div id="historico-lista" class="flex flex-col gap-2"></div></div>
   </main>
 
@@ -111,9 +109,8 @@
     let html5QrcodeScanner = null; let fila = []; let proc = false; let inputOp = document.getElementById('operador');
     const temas = { "CORTE": { bg: "bg-slate-700" }, "EMBALAGEM": { bg: "bg-blue-600" }, "ENTREGA": { bg: "bg-emerald-600" } };
 
-    // === VARIÁVEIS DE VIAGEM (Backup) ===
     let viagemAtual = parseInt(localStorage.getItem('coletor_viagem_atual')) || 1;
-    let tempoRestante = 600; // 10 Minutos = 600s
+    let tempoRestante = 600; 
     let timerInterval = null;
     let viagemAtiva = false;
 
@@ -122,19 +119,14 @@
       let opSalvo = localStorage.getItem('opLonaFort'); if(opSalvo) inputOp.value = opSalvo;
       inputOp.addEventListener('change', () => localStorage.setItem('opLonaFort', inputOp.value.trim()));
       
-      // Ativa visual do painel de viagens se for setor Entrega
       if (setorApp === "ENTREGA") {
         document.getElementById('painel-viagem').classList.remove('hidden');
         document.getElementById('painel-viagem').classList.add('flex');
         document.getElementById('num-viagem').innerText = viagemAtual;
       }
-
       iniciarCamera(); buscarResumoServidor();
     };
 
-    // ==========================================
-    // LÓGICA DO CRONÔMETRO (VIAGENS MOBILE)
-    // ==========================================
     function formatarTempo(segundos) {
       const min = Math.floor(segundos / 60).toString().padStart(2, '0');
       const seg = (segundos % 60).toString().padStart(2, '0');
@@ -160,54 +152,35 @@
 
     function iniciarCronometro() {
       if (setorApp !== "ENTREGA") return;
-      viagemAtiva = true;
-      tempoRestante = 600;
-      
+      viagemAtiva = true; tempoRestante = 600;
       document.getElementById('status-viagem').innerText = "Embarcando...";
       document.getElementById('status-viagem').classList.add('text-emerald-400');
-      
       atualizarDisplayViagem();
       
       clearInterval(timerInterval);
       timerInterval = setInterval(() => {
-        tempoRestante--;
-        atualizarDisplayViagem();
-        
-        if (tempoRestante <= 10 && tempoRestante > 0) {
-           bip(900, 0.3); // Apito curto para alertar no celular
-        }
-
-        if (tempoRestante <= 0) {
-           bip(400, 0.5); // Apito grave acabou
-           finalizarViagem();
-        }
+        tempoRestante--; atualizarDisplayViagem();
+        if (tempoRestante <= 10 && tempoRestante > 0) { bip(900, 0.3); }
+        if (tempoRestante <= 0) { bip(400, 0.5); finalizarViagem(); }
       }, 1000);
     }
 
     function finalizarViagem() {
-      clearInterval(timerInterval);
-      viagemAtiva = false;
-      
+      clearInterval(timerInterval); viagemAtiva = false;
       const display = document.getElementById('display-tempo');
       display.classList.remove('text-amber-500', 'text-emerald-400', 'text-red-500');
-      display.classList.add('text-slate-300');
-      display.innerText = "10:00";
-      
+      display.classList.add('text-slate-300'); display.innerText = "10:00";
       document.getElementById('status-viagem').innerText = "Fechada!";
       document.getElementById('status-viagem').classList.remove('text-emerald-400');
-      
-      viagemAtual++;
-      localStorage.setItem('coletor_viagem_atual', viagemAtual);
+      viagemAtual++; localStorage.setItem('coletor_viagem_atual', viagemAtual);
       document.getElementById('num-viagem').innerText = viagemAtual;
       alert(`Viagem enviada com sucesso! Agora você está na Viagem ${viagemAtual}`);
     }
 
     function forcarFechamentoViagemMobile() {
       if (!viagemAtiva) { alert("Nenhuma viagem em andamento."); return; }
-      tempoRestante = 0;
-      finalizarViagem();
+      tempoRestante = 0; finalizarViagem();
     }
-    // ==========================================
 
     function alternarAba(aba) {
       document.getElementById('aba-camera').style.display = aba==='camera' ? 'flex' : 'none';
@@ -222,7 +195,7 @@
     function piscarTela(tipo) { 
       const body = document.getElementById('body-bg'); 
       body.classList.remove('animate-flash-ok', 'animate-flash-erro', 'animate-flash-alerta'); 
-      void body.offsetWidth; // Reinicia a animação
+      void body.offsetWidth; 
       if(tipo === 'ok') body.classList.add('animate-flash-ok'); 
       else if(tipo === 'alerta') body.classList.add('animate-flash-alerta'); 
       else body.classList.add('animate-flash-erro'); 
@@ -235,119 +208,49 @@
     function iniciarCamera() { 
       try {
         html5QrcodeScanner = new Html5Qrcode("reader"); 
-        html5QrcodeScanner.start(
-          { facingMode: "environment" }, 
-          { fps: 10, qrbox: { width: 250, height: 250 } }, 
-          (decodedText) => { onScan(decodedText); }
-        ).catch(err => { 
-          document.getElementById('reader').innerHTML = `
-            <div class="text-center mt-10">
-              <p class="text-slate-400 font-bold mb-4">⚠️ Erro ao abrir a Câmera.</p>
-              <button onclick="iniciarCamera()" class="bg-slate-700 text-white px-4 py-2 rounded-lg font-bold text-sm">Tentar Novamente</button>
-            </div>`; 
-        }); 
+        html5QrcodeScanner.start({ facingMode: "environment" }, { fps: 10, qrbox: { width: 250, height: 250 } }, (decodedText) => { onScan(decodedText); })
+        .catch(err => { document.getElementById('reader').innerHTML = `<div class="text-center mt-10"><p class="text-slate-400 font-bold mb-4">⚠️ Erro ao abrir a Câmera.</p><button onclick="iniciarCamera()" class="bg-slate-700 text-white px-4 py-2 rounded-lg font-bold text-sm">Tentar Novamente</button></div>`; }); 
       } catch(e) {}
     }
 
-    function onScan(codigo) { 
-      let agora = Date.now();
-      if (agora - ultimoBipeTime < 2000) return; 
-      
-      ultimoBipeTime = agora; 
-      bip(800, 0.1); 
-      adicionarFila(codigo); 
-    }
-    
+    function onScan(codigo) { let agora = Date.now(); if (agora - ultimoBipeTime < 2000) return; ultimoBipeTime = agora; bip(800, 0.1); adicionarFila(codigo); }
     function adicionarManual(e) { e.preventDefault(); let val = document.getElementById('input-manual').value.trim(); if(val) { adicionarFila(val); document.getElementById('input-manual').value = ''; } }
 
     function adicionarFila(codigoRaw) {
       if(!inputOp.value.trim()) { alert("Selecione o nome do Operador antes de bipar!"); return; }
-      let id = Date.now().toString();
-      let c = codigoRaw.trim(); 
-      let lped = "";
+      let id = Date.now().toString(); let c = codigoRaw.trim(); let lped = "";
+      let matchML = c.match(/\^id\^ç\^(\d+)\^/i); if (matchML) c = matchML[1];
+      let regexQR = /L\.ped\s+(\d+)\s*-\s*([A-Za-z0-9]+)/i; let matchPequena = c.match(regexQR);
       
-      let matchML = c.match(/\^id\^ç\^(\d+)\^/i);
-      if (matchML) c = matchML[1];
-      
-      let regexQR = /L\.ped\s+(\d+)\s*-\s*([A-Za-z0-9]+)/i;
-      let matchPequena = c.match(regexQR);
-      
-      if(matchPequena) { 
-        lped = matchPequena[1]; 
-        c = matchPequena[2]; 
-      } else {
-        let limpo = c.replace(/[^0-9]/g, ""); 
-        if (c.toUpperCase().includes("L") || (limpo.length > 0 && limpo.length <= 4)) {
-          lped = limpo; c = "";
-        } else {
-          c = limpo; 
-        }
-      }
+      if(matchPequena) { lped = matchPequena[1]; c = matchPequena[2]; } 
+      else { let limpo = c.replace(/[^0-9]/g, ""); if (c.toUpperCase().includes("L") || (limpo.length > 0 && limpo.length <= 4)) { lped = limpo; c = ""; } else { c = limpo; } }
 
       if (c === "" && lped === "") return; 
       if(fila.some(x => (x.c === c && c !== "") || (x.lped === lped && lped !== ""))) return;
       
       let exibicao = c;
-      if (c !== "" && c.length > 6) {
-          exibicao = `<span class="opacity-75">${c.slice(0, -6)}</span><b class="text-[14px] text-amber-300 ml-[1px]">${c.slice(-6)}</b>`;
-      } else if (c !== "" && c.length <= 6) {
-          exibicao = `<b class="text-[14px] text-amber-300">${c}</b>`;
-      } else if (c === "" && lped !== "") { 
-          exibicao = `<span class="opacity-80">Linha: ${lped}</span>`; 
-      }
+      if (c !== "" && c.length > 6) { exibicao = `<span class="opacity-75">${c.slice(0, -6)}</span><b class="text-[14px] text-amber-300 ml-[1px]">${c.slice(-6)}</b>`; } 
+      else if (c !== "" && c.length <= 6) { exibicao = `<b class="text-[14px] text-amber-300">${c}</b>`; } 
+      else if (c === "" && lped !== "") { exibicao = `<span class="opacity-80">Linha: ${lped}</span>`; }
 
-      // 🚨 MÁGICA DA VIAGEM: Inicia o cronômetro no primeiro bip da entrega
-      if (setorApp === "ENTREGA" && !viagemAtiva) {
-        iniciarCronometro();
-      }
-
-      // Captura o número da viagem atual (ou deixa vazio se não for Entrega)
+      if (setorApp === "ENTREGA" && !viagemAtiva) iniciarCronometro();
       let viagemItem = setorApp === "ENTREGA" ? viagemAtual : "";
 
-      fila.push({ 
-        id: id, 
-        c: c, 
-        lped: lped, 
-        status: 'load', 
-        s: 'Enviando pro Google...', 
-        lp: lped || '?', 
-        pedHtml: exibicao, 
-        mod: 'Buscando...', 
-        qtd: '-',
-        viagem: viagemItem // <= Salva qual viagem ele pertence!
-      });
-      
-      renderTelas(); 
-      if(!proc) processar(); 
+      fila.push({ id: id, c: c, lped: lped, status: 'load', s: 'Enviando pro Google...', lp: lped || '?', pedHtml: exibicao, mod: 'Buscando...', qtd: '-', viagem: viagemItem });
+      renderTelas(); if(!proc) processar(); 
     }
 
     function gerarHtmlCartao(i) {
        let temaAtual = temas[setorApp] || temas["CORTE"];
        let cardStyle = "bg-white border-slate-200 text-slate-800"; let icon = `<i class="ph-bold ph-spinner animate-spin text-slate-400 text-3xl"></i>`;
-       
-       if(i.status === 'ok') { 
-         cardStyle = `${temaAtual.bg} border-transparent text-white shadow-md`; 
-         icon = `<i class="ph-fill ph-check-circle text-white text-4xl drop-shadow-sm"></i>`; 
-       } 
-       else if(i.status === 'alerta') { 
-         cardStyle = "bg-amber-500 border-transparent text-white shadow-md"; 
-         icon = `<i class="ph-fill ph-warning text-white text-4xl drop-shadow-sm"></i>`; 
-       }
-       else if(i.status === 'erro') { 
-         cardStyle = "bg-red-500 border-transparent text-white shadow-md"; 
-         icon = `<i class="ph-fill ph-warning-circle text-white text-4xl drop-shadow-sm"></i>`; 
-       }
+       if(i.status === 'ok') { cardStyle = `${temaAtual.bg} border-transparent text-white shadow-md`; icon = `<i class="ph-fill ph-check-circle text-white text-4xl drop-shadow-sm"></i>`; } 
+       else if(i.status === 'alerta') { cardStyle = "bg-amber-500 border-transparent text-white shadow-md"; icon = `<i class="ph-fill ph-warning text-white text-4xl drop-shadow-sm"></i>`; }
+       else if(i.status === 'erro') { cardStyle = "bg-red-500 border-transparent text-white shadow-md"; icon = `<i class="ph-fill ph-warning-circle text-white text-4xl drop-shadow-sm"></i>`; }
 
        return `<div id="${i.id}" class="animate-slide-in p-4 rounded-2xl border flex items-center justify-between gap-2 transition-all duration-300 ${cardStyle}">
          <div class="flex-1 overflow-hidden">
-           <div class="flex items-center gap-3 mb-2">
-             <span class="text-2xl font-black bg-slate-900 text-white px-3 py-1 rounded-lg shadow-sm">L. ${i.lp}</span>
-             <span class="text-[11px] md:text-xs font-bold font-mono tracking-wider truncate">${i.pedHtml}</span>
-           </div>
-           <div class="flex items-center gap-2">
-             <span class="text-[11px] font-black uppercase px-2 py-1.5 rounded-md bg-white/20 shadow-sm truncate max-w-[60%]">${i.mod}</span>
-             <span class="text-[12px] font-black uppercase px-2 py-1.5 rounded-md bg-white/20 shadow-sm">QTD: ${i.qtd}</span>
-           </div>
+           <div class="flex items-center gap-3 mb-2"><span class="text-2xl font-black bg-slate-900 text-white px-3 py-1 rounded-lg shadow-sm">L. ${i.lp}</span><span class="text-[11px] md:text-xs font-bold font-mono tracking-wider truncate">${i.pedHtml}</span></div>
+           <div class="flex items-center gap-2"><span class="text-[11px] font-black uppercase px-2 py-1.5 rounded-md bg-white/20 shadow-sm truncate max-w-[60%]">${i.mod}</span><span class="text-[12px] font-black uppercase px-2 py-1.5 rounded-md bg-white/20 shadow-sm">QTD: ${i.qtd}</span></div>
            ${i.status !== 'ok' && i.status !== 'load' ? `<p class="text-xs font-bold mt-2 opacity-100 bg-white/20 px-2 py-1 rounded">${i.s}</p>` : ''}
          </div>
          <div class="flex-shrink-0">${icon}</div>
@@ -359,72 +262,24 @@
     async function processar() {
       let i = fila.find(x => x.status === 'load' || x.status === 'pendente');
       if(!i) { proc = false; return; }
-      
       proc = true;
       try {
-        const payload = { 
-          acao: "processarLogistica", 
-          codigo: i.c, 
-          lped: i.lped, 
-          operador: inputOp.value, 
-          etapa: setorApp,
-          viagem: i.viagem // Enviando a viagem pro Backend!
-        };
-        
+        const payload = { acao: "processarLogistica", codigo: i.c, lped: i.lped, operador: inputOp.value, etapa: setorApp, viagem: i.viagem };
         const req = await fetch(URL_API_GOOGLE, { method: 'POST', body: JSON.stringify(payload) });
-        const r = await req.json(); 
-        let idx = fila.findIndex(x => x.id === i.id);
+        const r = await req.json(); let idx = fila.findIndex(x => x.id === i.id);
         
-        if(r.sucesso) { 
-          bip(1500, 0.2); 
-          piscarTela('ok'); 
-          fila[idx].status = 'ok'; 
-          fila[idx].s = "OK"; 
-          fila[idx].lp = r.lped || '?'; 
-          fila[idx].mod = r.mod || 'SEM MODALIDADE'; 
-          fila[idx].qtd = r.qtd || '-'; 
-          buscarResumoServidor(); 
-        } 
-        else { 
-          if(r.cor === "amarelo") {
-            bip(500, 0.3); 
-            piscarTela('alerta'); 
-            fila[idx].status = 'alerta'; 
-          } else {
-            bip(200, 0.4); 
-            piscarTela('erro'); 
-            fila[idx].status = 'erro'; 
-          }
-          fila[idx].s = r.erro; 
-        }
-      } catch (err) { 
-        let idx = fila.findIndex(x => x.id === i.id); 
-        fila[idx].status = 'pendente'; 
-        fila[idx].s = "⚠️ Sem Internet. Tentando denovo..."; 
-        renderTelas(); 
-        setTimeout(() => { processar(); }, 4000); 
-        return; 
-      }
+        if(r.sucesso) { bip(1500, 0.2); piscarTela('ok'); fila[idx].status = 'ok'; fila[idx].s = "OK"; fila[idx].lp = r.lped || '?'; fila[idx].mod = r.mod || 'SEM MODALIDADE'; fila[idx].qtd = r.qtd || '-'; buscarResumoServidor(); } 
+        else { if(r.cor === "amarelo") { bip(500, 0.3); piscarTela('alerta'); fila[idx].status = 'alerta'; } else { bip(200, 0.4); piscarTela('erro'); fila[idx].status = 'erro'; } fila[idx].s = r.erro; }
+      } catch (err) { let idx = fila.findIndex(x => x.id === i.id); fila[idx].status = 'pendente'; fila[idx].s = "⚠️ Sem Internet. Tentando denovo..."; renderTelas(); setTimeout(() => { processar(); }, 4000); return; }
       renderTelas(); processar();
     }
 
-    let bufferScanner = '';
-    let timeoutScanner;
-
+    let bufferScanner = ''; let timeoutScanner;
     document.addEventListener('keydown', (e) => {
       if (e.key.length > 1 && e.key !== 'Enter') return;
       clearTimeout(timeoutScanner);
-
-      if (e.key === 'Enter') {
-        if (bufferScanner.length > 3) { 
-          adicionarFila(bufferScanner); 
-          bufferScanner = '';
-        }
-        return;
-      }
-
-      bufferScanner += e.key;
-      timeoutScanner = setTimeout(() => { bufferScanner = ''; }, 50);
+      if (e.key === 'Enter') { if (bufferScanner.length > 3) { adicionarFila(bufferScanner); bufferScanner = ''; } return; }
+      bufferScanner += e.key; timeoutScanner = setTimeout(() => { bufferScanner = ''; }, 50);
     });
   </script>
 </body>
