@@ -48,6 +48,8 @@
   </div>
 
   <main class="flex-1 overflow-y-auto p-4 flex flex-col gap-4">
+    
+    <!-- DASHBOARD SUPERIOR -->
     <div class="bg-white border border-slate-200 rounded-2xl p-4 shadow-sm flex items-center justify-between">
       <div>
         <p class="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1">Total Processado</p>
@@ -58,13 +60,31 @@
       </button>
     </div>
 
-    <!-- 🚨 CENÁRIO A APLICADO: Tela de Viagens (Cronômetro) foi removida do celular -->
+    <!-- PAINEL DE VIAGEM (CRONÔMETRO) - Só aparece na ENTREGA (BACKUP) -->
+    <div id="painel-viagem" class="hidden bg-slate-800 border border-slate-700 rounded-2xl p-4 shadow-md flex-col justify-between relative overflow-hidden">
+      <div class="flex justify-between items-center relative z-10 mb-2">
+        <div>
+          <p class="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Lote de Embarque</p>
+          <p class="text-xl font-black text-white">VIAGEM <span id="num-viagem" class="text-emerald-400">1</span></p>
+        </div>
+        <div class="text-right">
+          <p class="text-[10px] font-bold text-slate-400 uppercase tracking-wider" id="status-viagem">Aguardando Bip</p>
+          <p class="text-4xl font-mono font-black text-slate-300 tracking-tighter" id="display-tempo">10:00</p>
+        </div>
+      </div>
+      <!-- Botão para fechar viagem no celular caso precise -->
+      <button onclick="forcarFechamentoViagemMobile()" class="w-full bg-slate-700 hover:bg-slate-600 text-white text-xs font-bold py-2 rounded border border-slate-600 mt-2">
+        <i class="ph-bold ph-stop-circle"></i> Forçar Fechar Viagem
+      </button>
+    </div>
 
+    <!-- ABAS -->
     <div class="flex rounded-xl bg-slate-200 p-1 shrink-0 mt-2">
       <button onclick="alternarAba('camera')" id="btn-tab-camera" class="flex-1 py-2 rounded-lg text-sm font-bold bg-white shadow text-slate-800 transition-all flex items-center justify-center gap-2"><i class="ph ph-camera text-lg"></i> Câmera</button>
       <button onclick="alternarAba('fila')" id="btn-tab-fila" class="flex-1 py-2 rounded-lg text-sm font-bold text-slate-500 transition-all flex items-center justify-center gap-2"><i class="ph ph-list-dashes text-lg"></i> Fila (<span id="cont-lista">0</span>)</button>
     </div>
 
+    <!-- CAMERA -->
     <div id="aba-camera" class="flex flex-col gap-4">
       <div class="bg-slate-900 rounded-2xl overflow-hidden shadow-inner relative" style="height: 250px;">
         <div id="reader" class="h-full w-full flex items-center justify-center text-slate-500">Iniciando câmera...</div>
@@ -77,11 +97,12 @@
       <div id="ultimo-bip-container"></div>
     </div>
 
+    <!-- FILA -->
     <div id="aba-fila" class="hidden flex-col gap-2 pb-10"><div id="historico-lista" class="flex flex-col gap-2"></div></div>
   </main>
 
   <script>
-    // 🚨 COLE A URL DA SUA NOVA IMPLANTAÇÃO AQUI EMBAIXO
+    // 🚨 O SEU LINK OFICIAL DA PLANILHA ESTÁ AQUI
     const URL_API_GOOGLE = "https://script.google.com/macros/s/AKfycbzhjyFuEog7qrCo0GGJiEUqKm9TSZzjDifYRFhR_teavlbwrd6_SnTRFyrWn6wW78R2/exec";
     
     const urlParams = new URLSearchParams(window.location.search);
@@ -90,13 +111,103 @@
     let html5QrcodeScanner = null; let fila = []; let proc = false; let inputOp = document.getElementById('operador');
     const temas = { "CORTE": { bg: "bg-slate-700" }, "EMBALAGEM": { bg: "bg-blue-600" }, "ENTREGA": { bg: "bg-emerald-600" } };
 
+    // === VARIÁVEIS DE VIAGEM (Backup) ===
+    let viagemAtual = parseInt(localStorage.getItem('coletor_viagem_atual')) || 1;
+    let tempoRestante = 600; // 10 Minutos = 600s
+    let timerInterval = null;
+    let viagemAtiva = false;
+
     window.onload = () => {
       document.getElementById('header-setor').innerText = setorApp;
       let opSalvo = localStorage.getItem('opLonaFort'); if(opSalvo) inputOp.value = opSalvo;
       inputOp.addEventListener('change', () => localStorage.setItem('opLonaFort', inputOp.value.trim()));
       
+      // Ativa visual do painel de viagens se for setor Entrega
+      if (setorApp === "ENTREGA") {
+        document.getElementById('painel-viagem').classList.remove('hidden');
+        document.getElementById('painel-viagem').classList.add('flex');
+        document.getElementById('num-viagem').innerText = viagemAtual;
+      }
+
       iniciarCamera(); buscarResumoServidor();
     };
+
+    // ==========================================
+    // LÓGICA DO CRONÔMETRO (VIAGENS MOBILE)
+    // ==========================================
+    function formatarTempo(segundos) {
+      const min = Math.floor(segundos / 60).toString().padStart(2, '0');
+      const seg = (segundos % 60).toString().padStart(2, '0');
+      return `${min}:${seg}`;
+    }
+
+    function atualizarDisplayViagem() {
+      if (setorApp !== "ENTREGA") return;
+      const display = document.getElementById('display-tempo');
+      display.innerText = formatarTempo(tempoRestante);
+      
+      if (tempoRestante <= 60 && tempoRestante > 10) {
+        display.classList.remove('text-emerald-400', 'text-slate-300', 'text-red-500');
+        display.classList.add('text-amber-500');
+      } else if (tempoRestante <= 10 && tempoRestante > 0) {
+        display.classList.remove('text-emerald-400', 'text-slate-300', 'text-amber-500');
+        display.classList.add('text-red-500');
+      } else if (tempoRestante > 60) {
+        display.classList.remove('text-amber-500', 'text-slate-300', 'text-red-500');
+        display.classList.add('text-emerald-400');
+      }
+    }
+
+    function iniciarCronometro() {
+      if (setorApp !== "ENTREGA") return;
+      viagemAtiva = true;
+      tempoRestante = 600;
+      
+      document.getElementById('status-viagem').innerText = "Embarcando...";
+      document.getElementById('status-viagem').classList.add('text-emerald-400');
+      
+      atualizarDisplayViagem();
+      
+      clearInterval(timerInterval);
+      timerInterval = setInterval(() => {
+        tempoRestante--;
+        atualizarDisplayViagem();
+        
+        if (tempoRestante <= 10 && tempoRestante > 0) {
+           bip(900, 0.3); // Apito curto para alertar no celular
+        }
+
+        if (tempoRestante <= 0) {
+           bip(400, 0.5); // Apito grave acabou
+           finalizarViagem();
+        }
+      }, 1000);
+    }
+
+    function finalizarViagem() {
+      clearInterval(timerInterval);
+      viagemAtiva = false;
+      
+      const display = document.getElementById('display-tempo');
+      display.classList.remove('text-amber-500', 'text-emerald-400', 'text-red-500');
+      display.classList.add('text-slate-300');
+      display.innerText = "10:00";
+      
+      document.getElementById('status-viagem').innerText = "Fechada!";
+      document.getElementById('status-viagem').classList.remove('text-emerald-400');
+      
+      viagemAtual++;
+      localStorage.setItem('coletor_viagem_atual', viagemAtual);
+      document.getElementById('num-viagem').innerText = viagemAtual;
+      alert(`Viagem enviada com sucesso! Agora você está na Viagem ${viagemAtual}`);
+    }
+
+    function forcarFechamentoViagemMobile() {
+      if (!viagemAtiva) { alert("Nenhuma viagem em andamento."); return; }
+      tempoRestante = 0;
+      finalizarViagem();
+    }
+    // ==========================================
 
     function alternarAba(aba) {
       document.getElementById('aba-camera').style.display = aba==='camera' ? 'flex' : 'none';
@@ -111,7 +222,7 @@
     function piscarTela(tipo) { 
       const body = document.getElementById('body-bg'); 
       body.classList.remove('animate-flash-ok', 'animate-flash-erro', 'animate-flash-alerta'); 
-      void body.offsetWidth; 
+      void body.offsetWidth; // Reinicia a animação
       if(tipo === 'ok') body.classList.add('animate-flash-ok'); 
       else if(tipo === 'alerta') body.classList.add('animate-flash-alerta'); 
       else body.classList.add('animate-flash-erro'); 
@@ -185,6 +296,14 @@
           exibicao = `<span class="opacity-80">Linha: ${lped}</span>`; 
       }
 
+      // 🚨 MÁGICA DA VIAGEM: Inicia o cronômetro no primeiro bip da entrega
+      if (setorApp === "ENTREGA" && !viagemAtiva) {
+        iniciarCronometro();
+      }
+
+      // Captura o número da viagem atual (ou deixa vazio se não for Entrega)
+      let viagemItem = setorApp === "ENTREGA" ? viagemAtual : "";
+
       fila.push({ 
         id: id, 
         c: c, 
@@ -195,7 +314,7 @@
         pedHtml: exibicao, 
         mod: 'Buscando...', 
         qtd: '-',
-        viagem: "" 
+        viagem: viagemItem // <= Salva qual viagem ele pertence!
       });
       
       renderTelas(); 
@@ -249,7 +368,7 @@
           lped: i.lped, 
           operador: inputOp.value, 
           etapa: setorApp,
-          viagem: "" 
+          viagem: i.viagem // Enviando a viagem pro Backend!
         };
         
         const req = await fetch(URL_API_GOOGLE, { method: 'POST', body: JSON.stringify(payload) });
