@@ -1,3 +1,6 @@
+<!-- ============================================================================== -->
+<!-- ARQUIVO: GitHub Coletor Mobile -->
+<!-- ============================================================================== -->
 <!DOCTYPE html>
 <html lang="pt-BR">
 <head>
@@ -20,7 +23,6 @@
     #reader video { object-fit: cover; }
   </style>
 </head>
-<!-- h-[100dvh] GARANTE QUE O SCROLL FUNCIONE NO IPHONE/ANDROID -->
 <body class="bg-slate-50 text-slate-800 h-[100dvh] flex flex-col font-sans overflow-hidden transition-colors duration-300" id="body-bg">
 
   <header class="bg-white px-4 py-3 shadow-sm z-10 flex items-center justify-between shrink-0">
@@ -53,12 +55,17 @@
         <p class="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1">Total Processado</p>
         <p class="text-3xl font-black text-slate-800 leading-none" id="total-processado">0</p>
       </div>
-      <button onclick="buscarResumoServidor()" class="p-2 bg-slate-50 rounded-xl border border-slate-200 active:bg-slate-100 transition-colors">
-        <i class="ph ph-arrows-clockwise text-slate-500 text-xl" id="icone-sync"></i>
-      </button>
+      <div class="flex gap-2">
+        <button onclick="modoImpressaoAvulsa()" id="btn-print" class="p-2 bg-slate-50 rounded-xl border border-slate-200 active:bg-slate-100 transition-colors hidden" title="Imprimir Clandestino">
+          <i class="ph ph-printer text-slate-500 text-xl" id="icone-print"></i>
+        </button>
+        <button onclick="buscarResumoServidor()" class="p-2 bg-slate-50 rounded-xl border border-slate-200 active:bg-slate-100 transition-colors">
+          <i class="ph ph-arrows-clockwise text-slate-500 text-xl" id="icone-sync"></i>
+        </button>
+      </div>
     </div>
 
-    <!-- PAINEL DE VIAGEM (CRONÔMETRO DE BACKUP) -->
+    <!-- PAINEL DE VIAGEM -->
     <div id="painel-viagem" class="hidden bg-slate-800 border border-slate-700 rounded-2xl p-4 shadow-md flex-col justify-between relative overflow-hidden shrink-0">
       <div class="flex justify-between items-center relative z-10 mb-2">
         <div>
@@ -81,13 +88,11 @@
     </div>
 
     <div id="aba-camera" class="flex flex-col gap-4 pb-12">
-      <!-- CÂMERA COM TAMANHO REDUZIDO -->
       <div class="bg-slate-900 rounded-2xl overflow-hidden shadow-inner relative shrink-0" style="height: 200px;">
         <div id="reader" class="h-full w-full flex items-center justify-center text-slate-500">Iniciando câmera...</div>
         <div class="absolute inset-0 pointer-events-none border-[3px] border-white/20 m-6 rounded-xl"></div>
       </div>
       
-      <!-- CAIXA DO ÚLTIMO BIP SOBE PRA FICAR ENTRE A CÂMERA E O TECLADO -->
       <div id="ultimo-bip-container"></div>
       
       <form onsubmit="adicionarManual(event)" class="flex gap-2 shrink-0">
@@ -100,7 +105,6 @@
   </main>
 
   <script>
-    // 🚨 O SEU LINK OFICIAL DA PLANILHA ESTÁ AQUI
     const URL_API_GOOGLE = "https://script.google.com/macros/s/AKfycbzhjyFuEog7qrCo0GGJiEUqKm9TSZzjDifYRFhR_teavlbwrd6_SnTRFyrWn6wW78R2/exec";
     
     const urlParams = new URLSearchParams(window.location.search);
@@ -113,6 +117,7 @@
     let tempoRestante = 600; 
     let timerInterval = null;
     let viagemAtiva = false;
+    let modoImpressaoAtivo = false;
 
     window.onload = () => {
       document.getElementById('header-setor').innerText = setorApp;
@@ -123,6 +128,7 @@
         document.getElementById('painel-viagem').classList.remove('hidden');
         document.getElementById('painel-viagem').classList.add('flex');
         document.getElementById('num-viagem').innerText = viagemAtual;
+        document.getElementById('btn-print').classList.remove('hidden');
       }
       iniciarCamera(); buscarResumoServidor();
     };
@@ -203,7 +209,10 @@
 
     async function buscarResumoServidor() { const icon = document.getElementById('icone-sync'); icon.classList.add('animate-spin'); try { const req = await fetch(URL_API_GOOGLE, { method: 'POST', body: JSON.stringify({ acao: "buscarResumo", etapa: setorApp }) }); const res = await req.json(); if(res.totais) document.getElementById('total-processado').innerText = res.totais[setorApp] || 0; } catch (e) {} icon.classList.remove('animate-spin'); }
 
-    let ultimoBipeTime = 0; 
+    // Ponto 7: Otimização da Fila
+    let cooldownBip = 0; 
+    let bufferCargaGoogle = [];
+    let mochilaProcTimer = null;
 
     function iniciarCamera() { 
       try {
@@ -213,11 +222,32 @@
       } catch(e) {}
     }
 
-    function onScan(codigo) { let agora = Date.now(); if (agora - ultimoBipeTime < 2000) return; ultimoBipeTime = agora; bip(800, 0.1); adicionarFila(codigo); }
+    function modoImpressaoAvulsa() {
+       modoImpressaoAtivo = !modoImpressaoAtivo;
+       const btn = document.getElementById('btn-print');
+       if(modoImpressaoAtivo) {
+          btn.classList.add('bg-blue-100', 'border-blue-300');
+          document.getElementById('icone-print').classList.add('text-blue-600');
+          alert("MODO IMPRESSÃO AVULSA: O próximo bip irá APENAS imprimir a NF do Drive, sem contabilizar na viagem.");
+       } else {
+          btn.classList.remove('bg-blue-100', 'border-blue-300');
+          document.getElementById('icone-print').classList.remove('text-blue-600');
+       }
+    }
+
+    function onScan(codigo) { 
+        let agora = Date.now(); 
+        if (agora - cooldownBip < 1500) return; 
+        cooldownBip = agora; 
+        bip(800, 0.1); 
+        adicionarFila(codigo); 
+    }
+    
     function adicionarManual(e) { e.preventDefault(); let val = document.getElementById('input-manual').value.trim(); if(val) { adicionarFila(val); document.getElementById('input-manual').value = ''; } }
 
     function adicionarFila(codigoRaw) {
-      if(!inputOp.value.trim()) { alert("Selecione o nome do Operador antes de bipar!"); return; }
+      if(!inputOp.value.trim() && !modoImpressaoAtivo) { alert("Selecione o nome do Operador antes de bipar!"); return; }
+      
       let id = Date.now().toString(); let c = codigoRaw.trim(); let lped = "";
       let matchML = c.match(/\^id\^ç\^(\d+)\^/i); if (matchML) c = matchML[1];
       let regexQR = /L\.ped\s+(\d+)\s*-\s*([A-Za-z0-9]+)/i; let matchPequena = c.match(regexQR);
@@ -233,11 +263,72 @@
       else if (c !== "" && c.length <= 6) { exibicao = `<b class="text-[14px] text-amber-300">${c}</b>`; } 
       else if (c === "" && lped !== "") { exibicao = `<span class="opacity-80">Linha: ${lped}</span>`; }
 
+      // Ponto 5: Modo Clandestino de Impressão
+      if(modoImpressaoAtivo) {
+          fila.push({ id: id, c: c, lped: lped, status: 'ok', s: 'Procurando NF...', lp: lped || '?', pedHtml: exibicao, mod: 'AVULSA', qtd: '-', acaoExt: 'imprimir' });
+          renderTelas(); 
+          processarImpressaoUnica(c, id);
+          modoImpressaoAvulsa(); // Desliga após bipar
+          return;
+      }
+
       if (setorApp === "ENTREGA" && !viagemAtiva) iniciarCronometro();
       let viagemItem = setorApp === "ENTREGA" ? viagemAtual : "";
 
-      fila.push({ id: id, c: c, lped: lped, status: 'load', s: 'Enviando pro Google...', lp: lped || '?', pedHtml: exibicao, mod: 'Buscando...', qtd: '-', viagem: viagemItem });
-      renderTelas(); if(!proc) processar(); 
+      // Interface Otimista: Já assume como OK para o usuário
+      fila.push({ id: id, c: c, lped: lped, status: 'ok', s: 'Anotado localmente', lp: lped || '?', pedHtml: exibicao, mod: 'Em rota...', qtd: '-', viagem: viagemItem });
+      renderTelas();
+      piscarTela('ok');
+
+      bufferCargaGoogle.push({ idObj: id, payload: { acao: "processarLogistica", codigo: c, lped: lped, operador: inputOp.value, etapa: setorApp, viagem: viagemItem } });
+      
+      clearTimeout(mochilaProcTimer);
+      mochilaProcTimer = setTimeout(processarMochilaGoogle, 2000); 
+    }
+
+    async function processarImpressaoUnica(codigo, htmlId) {
+        try {
+            const req = await fetch(URL_API_GOOGLE, { method: 'POST', body: JSON.stringify({ acao: "imprimirAvulso", codigo: codigo }) });
+            const r = await req.json();
+            let idx = fila.findIndex(x => x.id === htmlId);
+            if(r.success && r.base64) {
+               fila[idx].s = "Abrindo NF...";
+               const byteCharacters = atob(r.base64);
+               const byteNumbers = new Array(byteCharacters.length);
+               for (let i = 0; i < byteCharacters.length; i++) { byteNumbers[i] = byteCharacters.charCodeAt(i); }
+               const blob = new Blob([new Uint8Array(byteNumbers)], {type: 'application/pdf'});
+               const fileURL = URL.createObjectURL(blob);
+               const w = window.open(fileURL, '_blank');
+               if(w) w.onload = () => setTimeout(()=> w.print(), 200);
+            } else {
+               fila[idx].status = 'alerta'; fila[idx].s = "NF não encontrada no Drive."; piscarTela('alerta');
+            }
+        } catch(e) {}
+        renderTelas();
+    }
+
+    async function processarMochilaGoogle() {
+        if(bufferCargaGoogle.length === 0) return;
+        const lote = [...bufferCargaGoogle];
+        bufferCargaGoogle = [];
+
+        // Por segurança, mandamos 1 a 1 de forma silenciosa e rápida no background para não ter de mexer no script backend de lote logístico agora
+        for(let item of lote) {
+           try {
+             const req = await fetch(URL_API_GOOGLE, { method: 'POST', body: JSON.stringify(item.payload) });
+             const r = await req.json();
+             let idx = fila.findIndex(x => x.id === item.idObj);
+             if(!r.sucesso) {
+                 if(r.cor === "amarelo") { bip(500, 0.3); piscarTela('alerta'); fila[idx].status = 'alerta'; } 
+                 else { bip(200, 0.4); piscarTela('erro'); fila[idx].status = 'erro'; } 
+                 fila[idx].s = r.erro;
+             } else {
+                 fila[idx].s = "Gravado"; fila[idx].lp = r.lped || '?'; fila[idx].mod = r.mod || '-'; fila[idx].qtd = r.qtd || '-';
+             }
+           } catch(e) {}
+           renderTelas();
+        }
+        buscarResumoServidor();
     }
 
     function gerarHtmlCartao(i) {
@@ -251,7 +342,7 @@
          <div class="flex-1 overflow-hidden">
            <div class="flex items-center gap-3 mb-2"><span class="text-2xl font-black bg-slate-900 text-white px-3 py-1 rounded-lg shadow-sm">L. ${i.lp}</span><span class="text-[11px] md:text-xs font-bold font-mono tracking-wider truncate">${i.pedHtml}</span></div>
            <div class="flex items-center gap-2"><span class="text-[11px] font-black uppercase px-2 py-1.5 rounded-md bg-white/20 shadow-sm truncate max-w-[60%]">${i.mod}</span><span class="text-[12px] font-black uppercase px-2 py-1.5 rounded-md bg-white/20 shadow-sm">QTD: ${i.qtd}</span></div>
-           ${i.status !== 'ok' && i.status !== 'load' ? `<p class="text-xs font-bold mt-2 opacity-100 bg-white/20 px-2 py-1 rounded">${i.s}</p>` : ''}
+           ${i.status !== 'ok' && i.status !== 'load' ? `<p class="text-xs font-bold mt-2 opacity-100 bg-white/20 px-2 py-1 rounded">${i.s}</p>` : `<p class="text-[10px] opacity-70 mt-1">${i.s}</p>`}
          </div>
          <div class="flex-shrink-0">${icon}</div>
        </div>`;
@@ -259,26 +350,11 @@
 
     function renderTelas() { document.getElementById('cont-lista').innerText = fila.length; if(fila.length === 0) return; document.getElementById('ultimo-bip-container').innerHTML = gerarHtmlCartao(fila[fila.length-1]); let h = ""; [...fila].reverse().forEach(i => { h += gerarHtmlCartao(i); }); document.getElementById('historico-lista').innerHTML = h; }
 
-    async function processar() {
-      let i = fila.find(x => x.status === 'load' || x.status === 'pendente');
-      if(!i) { proc = false; return; }
-      proc = true;
-      try {
-        const payload = { acao: "processarLogistica", codigo: i.c, lped: i.lped, operador: inputOp.value, etapa: setorApp, viagem: i.viagem };
-        const req = await fetch(URL_API_GOOGLE, { method: 'POST', body: JSON.stringify(payload) });
-        const r = await req.json(); let idx = fila.findIndex(x => x.id === i.id);
-        
-        if(r.sucesso) { bip(1500, 0.2); piscarTela('ok'); fila[idx].status = 'ok'; fila[idx].s = "OK"; fila[idx].lp = r.lped || '?'; fila[idx].mod = r.mod || 'SEM MODALIDADE'; fila[idx].qtd = r.qtd || '-'; buscarResumoServidor(); } 
-        else { if(r.cor === "amarelo") { bip(500, 0.3); piscarTela('alerta'); fila[idx].status = 'alerta'; } else { bip(200, 0.4); piscarTela('erro'); fila[idx].status = 'erro'; } fila[idx].s = r.erro; }
-      } catch (err) { let idx = fila.findIndex(x => x.id === i.id); fila[idx].status = 'pendente'; fila[idx].s = "⚠️ Sem Internet. Tentando denovo..."; renderTelas(); setTimeout(() => { processar(); }, 4000); return; }
-      renderTelas(); processar();
-    }
-
     let bufferScanner = ''; let timeoutScanner;
     document.addEventListener('keydown', (e) => {
       if (e.key.length > 1 && e.key !== 'Enter') return;
       clearTimeout(timeoutScanner);
-      if (e.key === 'Enter') { if (bufferScanner.length > 3) { adicionarFila(bufferScanner); bufferScanner = ''; } return; }
+      if (e.key === 'Enter') { if (bufferScanner.length > 3) { onScan(bufferScanner); bufferScanner = ''; } return; }
       bufferScanner += e.key; timeoutScanner = setTimeout(() => { bufferScanner = ''; }, 50);
     });
   </script>
