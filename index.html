@@ -23,6 +23,7 @@
     #reader video { object-fit: cover; }
   </style>
 </head>
+<!-- h-[100dvh] GARANTE QUE O SCROLL FUNCIONE NO IPHONE/ANDROID -->
 <body class="bg-slate-50 text-slate-800 h-[100dvh] flex flex-col font-sans overflow-hidden transition-colors duration-300" id="body-bg">
 
   <header class="bg-white px-4 py-3 shadow-sm z-10 flex items-center justify-between shrink-0">
@@ -65,12 +66,19 @@
       </div>
     </div>
 
-    <!-- PAINEL DE VIAGEM -->
+    <!-- PAINEL DE VIAGEM COM BOTÕES MANUAIS -->
     <div id="painel-viagem" class="hidden bg-slate-800 border border-slate-700 rounded-2xl p-4 shadow-md flex-col justify-between relative overflow-hidden shrink-0">
       <div class="flex justify-between items-center relative z-10 mb-2">
         <div>
-          <p class="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Lote de Embarque</p>
-          <p class="text-xl font-black text-white">VIAGEM <span id="num-viagem" class="text-emerald-400">1</span></p>
+          <p class="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1">Lote de Embarque</p>
+          <div class="flex items-center gap-1">
+            <span class="text-xl font-black text-white mr-1">VIAGEM</span>
+            <div class="flex items-center bg-slate-900 rounded-md border border-slate-600">
+              <button onclick="alterarViagemMobile(-1)" class="text-slate-400 hover:text-white px-2 py-0.5" title="Voltar Viagem"><i class="ph-bold ph-caret-left text-lg"></i></button>
+              <span id="num-viagem" class="text-emerald-400 font-black text-xl w-8 text-center">1</span>
+              <button onclick="alterarViagemMobile(1)" class="text-slate-400 hover:text-white px-2 py-0.5" title="Avançar Viagem"><i class="ph-bold ph-caret-right text-lg"></i></button>
+            </div>
+          </div>
         </div>
         <div class="text-right">
           <p class="text-[10px] font-bold text-slate-400 uppercase tracking-wider" id="status-viagem">Aguardando Bip</p>
@@ -113,7 +121,8 @@
     let html5QrcodeScanner = null; let fila = []; let proc = false; let inputOp = document.getElementById('operador');
     const temas = { "CORTE": { bg: "bg-slate-700" }, "EMBALAGEM": { bg: "bg-blue-600" }, "ENTREGA": { bg: "bg-emerald-600" } };
 
-    let viagemAtual = parseInt(localStorage.getItem('coletor_viagem_atual')) || 1;
+    // 🚨 PUXA SEMPRE A MESMA VARIÁVEL ENTRE PC E MOBILE
+    let viagemAtual = parseInt(localStorage.getItem('coletor_viagem_atual')) || parseInt(localStorage.getItem('numero_viagem_atual')) || 1;
     let tempoRestante = 600; 
     let timerInterval = null;
     let viagemAtiva = false;
@@ -132,6 +141,15 @@
       }
       iniciarCamera(); buscarResumoServidor();
     };
+
+    // CONTROLE MANUAL DA VIAGEM
+    function alterarViagemMobile(valor) {
+      viagemAtual += valor;
+      if(viagemAtual < 1) viagemAtual = 1;
+      localStorage.setItem('coletor_viagem_atual', viagemAtual);
+      localStorage.setItem('numero_viagem_atual', viagemAtual); // Sincroniza PC
+      document.getElementById('num-viagem').innerText = viagemAtual;
+    }
 
     function formatarTempo(segundos) {
       const min = Math.floor(segundos / 60).toString().padStart(2, '0');
@@ -178,7 +196,9 @@
       display.classList.add('text-slate-300'); display.innerText = "10:00";
       document.getElementById('status-viagem').innerText = "Fechada!";
       document.getElementById('status-viagem').classList.remove('text-emerald-400');
-      viagemAtual++; localStorage.setItem('coletor_viagem_atual', viagemAtual);
+      viagemAtual++; 
+      localStorage.setItem('coletor_viagem_atual', viagemAtual);
+      localStorage.setItem('numero_viagem_atual', viagemAtual); // Sincroniza PC
       document.getElementById('num-viagem').innerText = viagemAtual;
       alert(`Viagem enviada com sucesso! Agora você está na Viagem ${viagemAtual}`);
     }
@@ -312,7 +332,6 @@
         const lote = [...bufferCargaGoogle];
         bufferCargaGoogle = [];
 
-        // Por segurança, mandamos 1 a 1 de forma silenciosa e rápida no background para não ter de mexer no script backend de lote logístico agora
         for(let item of lote) {
            try {
              const req = await fetch(URL_API_GOOGLE, { method: 'POST', body: JSON.stringify(item.payload) });
