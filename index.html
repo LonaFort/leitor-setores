@@ -227,11 +227,18 @@
     let bufferCargaGoogle = [];
     let mochilaProcTimer = null;
 
+    // 🚀 OTIMIZAÇÃO DA CÂMERA AQUI
     function iniciarCamera() { 
       try {
         html5QrcodeScanner = new Html5Qrcode("reader"); 
-        html5QrcodeScanner.start({ facingMode: "environment" }, { fps: 10, qrbox: { width: 250, height: 250 } }, (decodedText) => { onScan(decodedText); })
-        .catch(err => { document.getElementById('reader').innerHTML = `<div class="text-center mt-10"><p class="text-slate-400 font-bold mb-4">⚠️ Erro ao abrir a Câmera.</p><button onclick="iniciarCamera()" class="bg-slate-700 text-white px-4 py-2 rounded-lg font-bold text-sm">Tentar Novamente</button></div>`; }); 
+        // Aumento agressivo de FPS e remoção da "qrbox" para ler a tela toda
+        html5QrcodeScanner.start(
+          { facingMode: "environment" }, 
+          { fps: 30, formatsToSupport: [ Html5QrcodeSupportedFormats.QR_CODE ] }, 
+          (decodedText) => { onScan(decodedText); }
+        ).catch(err => { 
+            document.getElementById('reader').innerHTML = `<div class="text-center mt-10"><p class="text-slate-400 font-bold mb-4">⚠️ Erro ao abrir a Câmera.</p><button onclick="iniciarCamera()" class="bg-slate-700 text-white px-4 py-2 rounded-lg font-bold text-sm">Tentar Novamente</button></div>`; 
+        }); 
       } catch(e) {}
     }
 
@@ -252,7 +259,6 @@
         let agora = Date.now(); 
         if (agora - cooldownBip < 1500) return; 
         cooldownBip = agora; 
-        bip(800, 0.1); 
         adicionarFila(codigo); 
     }
     
@@ -271,7 +277,6 @@
 
         if (c === "" && lped === "") return; 
         
-        // 🚨 NOVO: Remove da fila os que deram erro para permitir tentar de novo!
         let jaExiste = fila.find(x => (x.c === c && c !== "") || (x.lped === lped && lped !== ""));
         if (jaExiste) {
            if (jaExiste.status === 'erro' || jaExiste.status === 'alerta') {
@@ -287,21 +292,22 @@
         else if (c === "" && lped !== "") { exibicao = `<span class="opacity-80">Linha: ${lped}</span>`; }
 
         if(modoImpressaoAtivo) {
-            fila.push({ id: id, c: c, lped: lped, status: 'ok', s: 'Procurando NF...', lp: lped || '?', pedHtml: exibicao, mod: 'AVULSA', qtd: '-', acaoExt: 'imprimir' });
+            fila.push({ id: id, c: c, lped: lped, status: 'load', s: 'Procurando NF...', lp: lped || '?', pedHtml: exibicao, mod: 'AVULSA', qtd: '-', acaoExt: 'imprimir' });
             renderTelas(); processarImpressaoUnica(c, id); modoImpressaoAvulsa(); return;
         }
 
         if (setorApp === "ENTREGA" && !viagemAtiva) iniciarCronometro();
         let viagemItem = setorApp === "ENTREGA" ? viagemAtual : "";
 
-        fila.push({ id: id, c: c, lped: lped, status: 'ok', s: 'Anotado localmente', lp: lped || '?', pedHtml: exibicao, mod: 'Em rota...', qtd: '-', viagem: viagemItem });
+        // 🚀 OTIMIZAÇÃO: Cartão Azul de Carregamento em vez do falso OK
+        fila.push({ id: id, c: c, lped: lped, status: 'load', s: 'Aguardando Servidor...', lp: lped || '?', pedHtml: exibicao, mod: 'Validando...', qtd: '-', viagem: viagemItem });
         renderTelas();
-        piscarTela('ok');
+        bip(600, 0.05); // Som curtinho só para saber que leu
 
         bufferCargaGoogle.push({ idObj: id, payload: { acao: "processarLogistica", codigo: c, lped: lped, operador: inputOp.value, etapa: setorApp, viagem: viagemItem } });
         
         clearTimeout(mochilaProcTimer);
-        mochilaProcTimer = setTimeout(processarMochilaGoogle, 400); 
+        mochilaProcTimer = setTimeout(processarMochilaGoogle, 200); 
       } catch (err) {
         alert("Erro no leitor: " + err.message);
       }
@@ -313,7 +319,7 @@
             const r = await req.json();
             let idx = fila.findIndex(x => x.id === htmlId);
             if(r.success && r.base64) {
-               fila[idx].s = "Abrindo NF...";
+               fila[idx].status = 'ok'; fila[idx].s = "Abrindo NF...";
                const byteCharacters = atob(r.base64);
                const byteNumbers = new Array(byteCharacters.length);
                for (let i = 0; i < byteCharacters.length; i++) { byteNumbers[i] = byteCharacters.charCodeAt(i); }
@@ -341,21 +347,28 @@
              
              if(!r.sucesso) {
                  if (r.reqConfirm) {
-                    bip(300, 1.0); piscarTela('alerta');
-                    if (confirm(`⚠️ ALERTA DE PISTA!\n\nPacote #${item.payload.codigo} não passou pelo Corte/Embalagem.\n\nDeseja FORÇAR O EMBARQUE e dar baixa automática em tudo?`)) {
-                        try {
-                           const reqForce = await fetch(URL_API_GOOGLE, { method: 'POST', body: JSON.stringify({acao: "forcarBaixaCompleta", codigo: item.payload.codigo, operador: item.payload.operador, viagem: item.payload.viagem}) });
-                           const rForce = await reqForce.json();
-                           if(rForce.sucesso) { fila[idx].status = 'ok'; fila[idx].s = "Forçado OK"; fila[idx].lp = rForce.lped || '?'; fila[idx].mod = rForce.mod || '-'; fila[idx].qtd = rForce.qtd || '-'; piscarTela('ok'); } 
-                           else { fila[idx].status = 'erro'; fila[idx].s = rForce.erro; piscarTela('erro'); }
-                        } catch(e) { fila[idx].status = 'erro'; fila[idx].s = "Falha ao forçar baixa."; piscarTela('erro'); }
-                    } else {
-                        fila[idx].status = 'erro'; fila[idx].s = "Cancelado pelo Operador"; piscarTela('erro');
-                    }
+                    bip(300, 1.0); piscarTela('alerta'); fila[idx].status = 'alerta'; fila[idx].s = "Aguardando liberação..."; renderTelas();
+                    
+                    // Pequeno atraso para a tela renderizar a cor amarela antes do alerta travar a tela
+                    setTimeout(async () => {
+                        if (confirm(`⚠️ ALERTA DE PISTA!\n\nPacote #${item.payload.codigo} não passou pelo Corte/Embalagem.\n\nDeseja FORÇAR O EMBARQUE e dar baixa automática em tudo?`)) {
+                            fila[idx].s = "Forçando baixa..."; renderTelas();
+                            try {
+                               const reqForce = await fetch(URL_API_GOOGLE, { method: 'POST', body: JSON.stringify({acao: "forcarBaixaCompleta", codigo: item.payload.codigo, operador: item.payload.operador, viagem: item.payload.viagem}) });
+                               const rForce = await reqForce.json();
+                               if(rForce.sucesso) { fila[idx].status = 'ok'; fila[idx].s = "Forçado OK"; fila[idx].lp = rForce.lped || '?'; fila[idx].mod = rForce.mod || '-'; fila[idx].qtd = rForce.qtd || '-'; piscarTela('ok'); bip(1500, 0.1); } 
+                               else { fila[idx].status = 'erro'; fila[idx].s = rForce.erro; piscarTela('erro'); bip(200, 0.4); }
+                            } catch(e) { fila[idx].status = 'erro'; fila[idx].s = "Falha ao forçar baixa."; piscarTela('erro'); bip(200, 0.4); }
+                        } else {
+                            fila[idx].status = 'erro'; fila[idx].s = "Cancelado pelo Operador"; piscarTela('erro'); bip(200, 0.4);
+                        }
+                        renderTelas();
+                    }, 100);
                  } else {
                     if(r.cor === "amarelo") { bip(500, 0.3); piscarTela('alerta'); fila[idx].status = 'alerta'; } else { bip(200, 0.4); piscarTela('erro'); fila[idx].status = 'erro'; } fila[idx].s = r.erro;
                  }
              } else {
+                 bip(1500, 0.1); piscarTela('ok'); // 🚀 O Verdadeiro OK é dado aqui
                  fila[idx].status = 'ok'; fila[idx].s = "Gravado"; fila[idx].lp = r.lped || '?'; fila[idx].mod = r.mod || '-'; fila[idx].qtd = r.qtd || '-';
              }
            } catch(e) {}
@@ -367,9 +380,11 @@
     function gerarHtmlCartao(i) {
        let temaAtual = temas[setorApp] || temas["CORTE"];
        let cardStyle = "bg-white border-slate-200 text-slate-800"; let icon = `<i class="ph-bold ph-spinner animate-spin text-slate-400 text-3xl"></i>`;
+       
        if(i.status === 'ok') { cardStyle = `${temaAtual.bg} border-transparent text-white shadow-md`; icon = `<i class="ph-fill ph-check-circle text-white text-4xl drop-shadow-sm"></i>`; } 
        else if(i.status === 'alerta') { cardStyle = "bg-amber-500 border-transparent text-white shadow-md"; icon = `<i class="ph-fill ph-warning text-white text-4xl drop-shadow-sm"></i>`; }
        else if(i.status === 'erro') { cardStyle = "bg-red-500 border-transparent text-white shadow-md"; icon = `<i class="ph-fill ph-warning-circle text-white text-4xl drop-shadow-sm"></i>`; }
+       else if(i.status === 'load') { cardStyle = "bg-blue-500 border-transparent text-white shadow-md"; icon = `<i class="ph-bold ph-spinner-gap animate-spin text-white text-4xl drop-shadow-sm"></i>`; }
 
        return `<div id="${i.id}" class="animate-slide-in p-4 rounded-2xl border flex items-center justify-between gap-2 transition-all duration-300 ${cardStyle}">
          <div class="flex-1 overflow-hidden">
